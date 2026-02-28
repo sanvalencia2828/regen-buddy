@@ -424,6 +424,114 @@
     }
 
     /* ════════════════════════════════════════
+       CHAT
+    ════════════════════════════════════════ */
+    .chat-messages {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.6rem;
+      word-break: break-word;
+      animation: fadeIn 0.3s ease;
+      /* Ensure messages don't overflow on small screens */
+      overflow-wrap: break-word;
+      word-wrap: break-word;
+      hyphens: auto;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message-user {
+      align-self: flex-end;
+      background: #209cee;
+      color: white;
+      border: 2px solid #157ab5;
+    }
+
+    .message-regenmon {
+      align-self: flex-start;
+      background: #1a1a2e;
+      color: white;
+      border: 2px solid #444;
+    }
+
+    .message-header {
+      font-size: 0.5rem;
+      opacity: 0.7;
+      margin-bottom: 4px;
+    }
+
+    /* Memory indicator */
+    .memory-indicator {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #444;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.5rem;
+      z-index: 10;
+    }
+
+    /* Stat change animations */
+    .stat-change-animation {
+      position: fixed;
+      animation: floatUp 1s ease-out;
+      z-index: 1000;
+      pointer-events: none;
+      font-weight: bold;
+    }
+
+    @keyframes floatUp {
+      0% { transform: translateY(0); opacity: 1; }
+      100% { transform: translateY(-50px); opacity: 0; }
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.6rem;
+      word-break: break-word;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message-user {
+      align-self: flex-end;
+      background: #209cee;
+      color: white;
+      border: 2px solid #157ab5;
+    }
+
+    .message-regenmon {
+      align-self: flex-start;
+      background: #1a1a2e;
+      color: white;
+      border: 2px solid #444;
+    }
+
+    .message-header {
+      font-size: 0.5rem;
+      opacity: 0.7;
+      margin-bottom: 4px;
+    }
+
+    /* ════════════════════════════════════════
        TOAST
     ════════════════════════════════════════ */
     #toast {
@@ -659,6 +767,34 @@
           </div>
         </div>
 
+        <!-- Chat Section -->
+        <div class="nes-container with-title chat-section" style="position: relative;">
+          <p class="title">💬 Chat</p>
+
+          <!-- Memory Indicator -->
+          <div id="memory-indicator" class="memory-indicator">
+            🧠 <span id="memory-count">0</span> memorias
+          </div>
+
+          <!-- Chat Messages Container -->
+          <div id="chat-messages" class="chat-messages" style="min-height: 150px; max-height: 250px; overflow-y: auto; margin-bottom: 12px; padding: 8px; background: #1a1a2e; border-radius: 4px;">
+            <!-- Messages will be dynamically added here -->
+          </div>
+
+          <!-- Typing Indicator -->
+          <div id="typing-indicator" class="typing-indicator" style="display: none; margin-bottom: 8px; font-size: 0.7rem; color: #9b9b9b;">
+            <span id="regenmon-typing">Regenmon está escribiendo...</span>
+          </div>
+
+          <!-- Chat Input Area -->
+          <div class="chat-input-area" style="display: flex; gap: 8px;">
+            <input id="chat-input" type="text" class="nes-input" placeholder="Habla con tu Regenmon..." style="flex: 1; font-size: 0.6rem !important;" maxlength="100" />
+            <button id="send-btn" type="button" class="nes-btn is-primary" style="font-size: 0.6rem !important; padding: 8px 12px !important;">
+              Enviar
+            </button>
+          </div>
+        </div>
+
       </section>
     </div><!-- /.container -->
   </div><!-- /#app -->
@@ -783,6 +919,26 @@
       label.textContent = v;
     }
 
+    // Show stat change animation
+    function showStatChangeAnimation(stat, change, element) {
+      const animation = document.createElement('div');
+      animation.className = 'stat-change-animation';
+      animation.textContent = `${change > 0 ? '+' : ''}${change} ${stat}`;
+      animation.style.color = change > 0 ? '#92cc41' : '#e76e55';
+
+      // Position near the stat element
+      const rect = element.getBoundingClientRect();
+      animation.style.left = `${rect.left + rect.width / 2}px`;
+      animation.style.top = `${rect.top - 20}px`;
+
+      document.body.appendChild(animation);
+
+      // Remove animation after it completes
+      setTimeout(() => {
+        document.body.removeChild(animation);
+      }, 1000);
+    }
+
     // Screen switch
     function showScreen(id) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -851,9 +1007,26 @@
 
     // Actions
     function doAction({ happiness = 0, energy = 0, hunger = 0, msg }) {
+      // Store original stat values for animation
+      const originalHappiness = state.stats.happiness;
+      const originalEnergy = state.stats.energy;
+      const originalHunger = state.stats.hunger;
+
       state.stats.happiness = clamp(state.stats.happiness + happiness);
       state.stats.energy = clamp(state.stats.energy + energy);
       state.stats.hunger = clamp(state.stats.hunger + hunger);
+
+      // Show stat change animations
+      if (state.stats.happiness !== originalHappiness) {
+        showStatChangeAnimation('Felicidad', state.stats.happiness - originalHappiness, valHappiness);
+      }
+      if (state.stats.energy !== originalEnergy) {
+        showStatChangeAnimation('Energía', state.stats.energy - originalEnergy, valEnergy);
+      }
+      if (state.stats.hunger !== originalHunger) {
+        showStatChangeAnimation('Hambre', state.stats.hunger - originalHunger, valHunger);
+      }
+
       saveState();
       renderPet();
       showToast(msg);
@@ -902,9 +1075,27 @@
     // Stat degradation every 2 minutes
     setInterval(() => {
       if (!state) return;
+
+      // Store original stat values for animation
+      const originalHappiness = state.stats.happiness;
+      const originalEnergy = state.stats.energy;
+      const originalHunger = state.stats.hunger;
+
       state.stats.happiness = clamp(state.stats.happiness - 2);
       state.stats.energy = clamp(state.stats.energy - 3);
       state.stats.hunger = clamp(state.stats.hunger + 4);
+
+      // Show stat change animations only if there are changes
+      if (state.stats.happiness !== originalHappiness) {
+        showStatChangeAnimation('Felicidad', state.stats.happiness - originalHappiness, valHappiness);
+      }
+      if (state.stats.energy !== originalEnergy) {
+        showStatChangeAnimation('Energía', state.stats.energy - originalEnergy, valEnergy);
+      }
+      if (state.stats.hunger !== originalHunger) {
+        showStatChangeAnimation('Hambre', state.stats.hunger - originalHunger, valHunger);
+      }
+
       saveState();
       renderPet();
     }, 120000);
@@ -916,10 +1107,277 @@
         state = saved;
         renderPet();
         showScreen('screen-pet');
+        loadChatHistory(); // Load chat history if exists
+        updateMemoryIndicator(); // Update memory indicator on load
       } else {
         showScreen('screen-create');
       }
     })();
+
+    /* ══════════════════════════════════════════════
+       CHAT SYSTEM — New functionality
+    ══════════════════════════════════════════════ */
+    const CHAT_STORAGE_KEY = 'regenmon_chat_history';
+    const MEMORY_STORAGE_KEY = 'regenmon_memories';
+
+    // DOM refs — chat
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-btn');
+    const typingIndicator = document.getElementById('typing-indicator');
+
+    let chatHistory = [];
+    let memories = [];
+
+    // Load chat history from localStorage
+    function loadChatHistory() {
+      try {
+        const saved = localStorage.getItem(CHAT_STORAGE_KEY);
+        if (saved) {
+          chatHistory = JSON.parse(saved);
+          renderChatHistory();
+        }
+
+        const savedMemories = localStorage.getItem(MEMORY_STORAGE_KEY);
+        if (savedMemories) {
+          memories = JSON.parse(savedMemories);
+          updateMemoryIndicator();
+        }
+      } catch (e) {
+        console.error('Error loading chat history:', e);
+        chatHistory = [];
+        memories = [];
+      }
+    }
+
+    // Save chat history to localStorage
+    function saveChatHistory() {
+      try {
+        // Keep only the last 20 messages
+        if (chatHistory.length > 20) {
+          chatHistory = chatHistory.slice(-20);
+        }
+        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatHistory));
+        localStorage.setItem(MEMORY_STORAGE_KEY, JSON.stringify(memories));
+        updateMemoryIndicator();
+      } catch (e) {
+        console.error('Error saving chat history:', e);
+      }
+    }
+
+    // Update memory indicator display
+    function updateMemoryIndicator() {
+      const memoryCountElement = document.getElementById('memory-count');
+      if (memoryCountElement) {
+        memoryCountElement.textContent = memories.length;
+      }
+    }
+
+    // Render chat history
+    function renderChatHistory() {
+      chatMessages.innerHTML = '';
+      chatHistory.forEach(msg => {
+        addMessageToUI(msg.content, msg.sender, msg.timestamp);
+      });
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      updateMemoryIndicator();
+    }
+
+    // Add message to UI
+    function addMessageToUI(content, sender, timestamp = Date.now()) {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message message-${sender}`;
+
+      const time = new Date(timestamp);
+      const timeString = `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`;
+
+      messageDiv.innerHTML = `
+        <div class="message-header">${sender === 'user' ? 'Tú' : 'Regenmon'} - ${timeString}</div>
+        <div class="message-content">${content}</div>
+      `;
+
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Show typing indicator
+    function showTypingIndicator() {
+      typingIndicator.style.display = 'block';
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Hide typing indicator
+    function hideTypingIndicator() {
+      typingIndicator.style.display = 'none';
+    }
+
+    // Get Regenmon's personality based on stats
+    function getRegenmonPersonality() {
+      const stats = state.stats;
+      let personality = "amigable y juguetón";
+
+      if (stats.energy < 30) {
+        personality += ", pero estoy cansado";
+      }
+
+      if (stats.happiness > 70) {
+        personality += ", muy entusiasta";
+      }
+
+      if (stats.hunger < 30) {
+        personality += ", tengo hambre";
+      }
+
+      return personality;
+    }
+
+    // Generate Regenmon's response using OpenAI API
+    async function getRegenmonResponse(userMessage) {
+      const personality = getRegenmonPersonality();
+      const memoriesText = memories.length > 0 ? `Recuerdos: ${memories.join(', ')}` : '';
+
+      const prompt = `Eres Regenmon, una mascota virtual muy ${personality} que vive en una aplicación web.
+      Responde de manera corta (máximo 50 palabras), amigable y juguetona, como si fueras una mascota virtual.
+      Usa emojis ocasionalmente. Habla en español.
+
+      ${memoriesText}
+
+      Usuario: ${userMessage}
+      Regenmon:`;
+
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer YOUR_OPENAI_API_KEY_HERE'  // Replace with your actual API key
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [{role: "user", content: prompt}],
+            max_tokens: 100,
+            temperature: 0.7
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content.trim();
+      } catch (error) {
+        console.error('Error getting Regenmon response:', error);
+        return "¡Ups! Estoy un poco cansado ahora, ¿podemos hablar más tarde? 😴";
+      }
+    }
+
+    // Extract memories from user messages
+    function extractMemories(message) {
+      const namePattern = new RegExp(`\\b${state.name}\\b`, 'i');
+      if (namePattern.test(message)) {
+        // If user mentions Regenmon's name, save it as a memory
+        const memory = `Te llamas ${state.name}`;
+        if (!memories.includes(memory)) {
+          memories.push(memory);
+        }
+      }
+
+      // Add other memory extraction logic here
+      if (message.toLowerCase().includes('me gusta')) {
+        const match = message.match(/me gusta ([^.!?]+)/i);
+        if (match) {
+          const preference = `Te gusta ${match[1]}`;
+          if (!memories.includes(preference)) {
+            memories.push(preference);
+          }
+        }
+      }
+    }
+
+    // Handle sending a message
+    async function sendMessage() {
+      const message = chatInput.value.trim();
+      if (!message) return;
+
+      // Store original stat values for animation
+      const originalHappiness = state.stats.happiness;
+      const originalEnergy = state.stats.energy;
+
+      // Add user message to chat
+      const timestamp = Date.now();
+      chatHistory.push({ content: message, sender: 'user', timestamp });
+      addMessageToUI(message, 'user', timestamp);
+      chatInput.value = '';
+
+      // Extract memories from user message
+      extractMemories(message);
+
+      // Show typing indicator
+      showTypingIndicator();
+
+      // Affect stats: +5 happiness, -3 energy
+      state.stats.happiness = clamp(state.stats.happiness + 5);
+      state.stats.energy = clamp(state.stats.energy - 3);
+
+      // Show stat change animations
+      if (state.stats.happiness !== originalHappiness) {
+        showStatChangeAnimation('Felicidad', state.stats.happiness - originalHappiness, valHappiness);
+      }
+      if (state.stats.energy !== originalEnergy) {
+        showStatChangeAnimation('Energía', state.stats.energy - originalEnergy, valEnergy);
+      }
+
+      renderPet();
+
+      // If conversation has more than 5 messages, extra energy penalty
+      const recentMessages = chatHistory.filter(m => m.sender === 'user');
+      let extraEnergyPenalty = false;
+      if (recentMessages.length > 5) {
+        const energyBeforePenalty = state.stats.energy;
+        state.stats.energy = clamp(state.stats.energy - 5);
+        if (state.stats.energy !== energyBeforePenalty) {
+          showStatChangeAnimation('Energía', state.stats.energy - energyBeforePenalty, valEnergy);
+          extraEnergyPenalty = true;
+        }
+        renderPet();
+      }
+
+      saveState();
+
+      // Get and display Regenmon's response
+      try {
+        const response = await getRegenmonResponse(message);
+        hideTypingIndicator();
+
+        // Add Regenmon's response to chat
+        const responseTimestamp = Date.now();
+        chatHistory.push({ content: response, sender: 'regenmon', timestamp: responseTimestamp });
+        addMessageToUI(response, 'regenmon', responseTimestamp);
+
+        // Save chat history
+        saveChatHistory();
+      } catch (error) {
+        hideTypingIndicator();
+        const errorMessage = "¡Ups! Tengo problemas para pensar ahora mismo 😅";
+        const errorTimestamp = Date.now();
+        chatHistory.push({ content: errorMessage, sender: 'regenmon', timestamp: errorTimestamp });
+        addMessageToUI(errorMessage, 'regenmon', errorTimestamp);
+        saveChatHistory();
+      }
+    }
+
+    // Event listeners for chat
+    sendBtn.addEventListener('click', sendMessage);
+
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    // Initialize chat system
+    loadChatHistory();
   </script>
 </body>
 
