@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Regenmon 🐣</title>
+
+  <!-- Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+
+  <!-- NES.css -->
+  <link rel="stylesheet" href="https://unpkg.com/nes.css@latest/css/nes.min.css" />
+
+  <style>
+    /* ════════════════════════════════════════
+       RESET & BASE
+    ════════════════════════════════════════ */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      overflow-x: hidden;
+      /* global horizontal overflow guard */
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      max-width: 100vw;
+      /* never wider than viewport */
+      background: #212529;
+      color: #fff;
+      font-family: 'Press Start 2P', monospace;
+      overflow-x: hidden;
+    }
+
+    /* ════════════════════════════════════════
+       LAYOUT
+    ════════════════════════════════════════ */
+    #app {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 12px 0 40px;
+      width: 100%;
+    }
+
+    /* Main content wrapper — 95% width, max 500px, never overflows */
+    .container {
+      width: 95%;
+      max-width: 500px;
+      min-width: 0;
+    }
+
+    /* ════════════════════════════════════════
+       TYPOGRAPHY / TITLE
+    ════════════════════════════════════════ */
+    .game-title {
+      text-align: center;
+      font-size: clamp(1rem, 5vw, 1.6rem);
+      color: #92cc41;
+      letter-spacing: 2px;
+      margin: 0 0 8px;
+      text-shadow: 4px 4px #0d0d0d;
+      word-break: break-word;
+    }
+
+    .game-subtitle {
+      text-align: center;
+      font-size: clamp(0.5rem, 2.5vw, 0.65rem);
+      color: #9b9b9b;
+      margin: 0 0 20px;
+    }
+
+    /* ════════════════════════════════════════
+       SCREENS
+    ════════════════════════════════════════ */
+    .screen {
+      display: none;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .screen.active {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ════════════════════════════════════════
+       NES.css OVERRIDES
+       NES.css uses hard-coded padding and widths
+       that can cause overflow — we neutralise them.
+    ════════════════════════════════════════ */
+    .nes-container {
+      padding: 1.4rem 1rem !important;
+      overflow: hidden;
+      /* clip anything that tries to escape */
+      min-width: 0;
+      width: 100%;
+    }
+
+    /* Input must respect parent width */
+    .nes-input {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      font-size: clamp(0.5rem, 2.5vw, 0.65rem) !important;
+    }
+
+    .nes-input.is-error {
+      border-color: #e76e55 !important;
+    }
+
+    /* Progress bars: always 100% of their container, never overflow */
+    .nes-progress {
+      width: 100% !important;
+      max-width: 100% !important;
+      height: 20px !important;
+      display: block !important;
+    }
+
+    /* Buttons: allow text to wrap so long labels don't break layout */
+    .nes-btn {
+      white-space: normal !important;
+      word-break: break-word !important;
+    }
+
+    /* ════════════════════════════════════════
+       CREATION FORM
+    ════════════════════════════════════════ */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .form-group label {
+      font-size: clamp(0.5rem, 2.2vw, 0.6rem);
+      color: #92cc41;
+    }
+
+    .hint {
+      font-size: clamp(0.42rem, 2vw, 0.5rem);
+      color: #9b9b9b;
+      margin-top: -4px;
+      word-break: break-word;
+    }
+
+    .hint.error {
+      color: #e76e55;
+    }
+
+    /* ════════════════════════════════════════
+       TYPE SELECTOR
+    ════════════════════════════════════════ */
+    .type-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .type-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 10px 4px;
+      cursor: pointer;
+      border: 4px solid #444;
+      background: #1a1a2e;
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+      min-width: 0;
+      /* allow grid to shrink cells */
+      overflow: hidden;
+    }
+
+    .type-card:hover {
+      border-color: #92cc41;
+    }
+
+    .type-card.selected {
+      border-color: #209cee;
+      background: #0d2a3d;
+    }
+
+    .type-emoji {
+      font-size: clamp(1.2rem, 6vw, 2rem);
+    }
+
+    .type-label {
+      font-size: clamp(0.38rem, 1.8vw, 0.5rem);
+      color: #fff;
+      text-align: center;
+      word-break: break-word;
+    }
+
+    .type-desc {
+      font-size: clamp(0.3rem, 1.4vw, 0.4rem);
+      color: #9b9b9b;
+      text-align: center;
+      word-break: break-word;
+    }
+
+    /* ════════════════════════════════════════
+       ECLOSIONAR BUTTON
+    ════════════════════════════════════════ */
+    .btn-full {
+      width: 100%;
+      font-size: clamp(0.5rem, 2.5vw, 0.65rem) !important;
+      padding: 14px 8px !important;
+      cursor: pointer;
+    }
+
+    .btn-full.is-disabled {
+      cursor: not-allowed;
+    }
+
+    /* ════════════════════════════════════════
+       PET CARD
+    ════════════════════════════════════════ */
+    .pet-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 12px !important;
+      gap: 8px;
+    }
+
+    .pet-card.type-seed {
+      background: linear-gradient(135deg, #1a2e1a, #0d1a0d);
+    }
+
+    .pet-card.type-drop {
+      background: linear-gradient(135deg, #0d1a2e, #0a1220);
+    }
+
+    .pet-card.type-spark {
+      background: linear-gradient(135deg, #2e2a0d, #1a1700);
+    }
+
+    .pet-name {
+      font-size: clamp(0.7rem, 4vw, 1.1rem);
+      color: #fff;
+      text-align: center;
+      word-break: break-all;
+      margin: 0;
+    }
+
+    .pet-emoji {
+      font-size: clamp(3rem, 18vw, 5rem);
+      animation: bounce 1.2s infinite ease-in-out;
+      line-height: 1.2;
+    }
+
+    @keyframes bounce {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+
+    .pet-type-badge {
+      font-size: clamp(0.34rem, 1.8vw, 0.44rem);
+      color: #9b9b9b;
+      letter-spacing: 1px;
+      text-align: center;
+      word-break: break-word;
+    }
+
+    /* ════════════════════════════════════════
+       STATS
+    ════════════════════════════════════════ */
+    .stats-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .stat-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      font-size: clamp(0.42rem, 2.2vw, 0.52rem);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      /* wrap on very narrow screens */
+    }
+
+    .stat-value {
+      color: #9b9b9b;
+      font-size: clamp(0.38rem, 2vw, 0.48rem);
+      white-space: nowrap;
+    }
+
+    /* ════════════════════════════════════════
+       ACTION BUTTONS
+    ════════════════════════════════════════ */
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .action-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      font-size: clamp(0.38rem, 1.8vw, 0.48rem) !important;
+      padding: 10px 4px !important;
+      cursor: pointer;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .action-btn .action-icon {
+      font-size: clamp(1rem, 5vw, 1.4rem);
+    }
+
+    /* ════════════════════════════════════════
+       INFO BAR (age + reset button)
+    ════════════════════════════════════════ */
+    .info-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .age-display {
+      font-size: clamp(0.34rem, 1.8vw, 0.44rem);
+      color: #9b9b9b;
+      word-break: break-word;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .btn-reset-sm {
+      font-size: clamp(0.34rem, 1.8vw, 0.44rem) !important;
+      padding: 8px 10px !important;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ════════════════════════════════════════
+       MODAL
+    ════════════════════════════════════════ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-box {
+      width: 95%;
+      max-width: 420px;
+      background: #212529;
+      padding: 20px 16px !important;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .modal-title {
+      font-size: clamp(0.6rem, 3vw, 0.8rem);
+      color: #e76e55;
+      text-align: center;
+    }
+
+    .modal-body {
+      font-size: clamp(0.42rem, 2vw, 0.55rem);
+      color: #9b9b9b;
+      text-align: center;
+      line-height: 2.2;
+      word-break: break-word;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      /* stacks on very small screens */
+    }
+
+    .modal-actions button {
+      flex: 1;
+      min-width: 110px;
+      font-size: clamp(0.4rem, 2vw, 0.52rem) !important;
+      padding: 10px 4px !important;
+      cursor: pointer;
+    }
+
+    /* ════════════════════════════════════════
+       TOAST
+    ════════════════════════════════════════ */
+    #toast {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      background: #1a1a2e;
+      color: #fff;
+      border: 4px solid #92cc41;
+      padding: 10px 14px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(0.38rem, 2vw, 0.48rem);
+      z-index: 200;
+      transition: transform 0.3s ease;
+      white-space: normal;
+      /* allow wrapping — prevents horizontal overflow */
+      word-break: break-word;
+      max-width: min(90vw, 380px);
+      text-align: center;
+      box-shadow: 4px 4px 0 #0d0d0d;
+    }
+
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ════════════════════════════════════════
+       MEDIA QUERIES
+       Mobile-first: base = mobile.
+       Scale up for larger screens.
+    ════════════════════════════════════════ */
+
+    /* ── Tiny phones < 360px ── */
+    @media (max-width: 359px) {
+
+      /* Stack type cards vertically */
+      .type-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .type-card {
+        flex-direction: row;
+        gap: 12px;
+        padding: 10px 12px;
+        justify-content: flex-start;
+      }
+
+      .type-emoji {
+        font-size: 1.6rem;
+      }
+
+      /* Stack modal buttons vertically */
+      .modal-actions {
+        flex-direction: column;
+      }
+
+      .modal-actions button {
+        min-width: auto;
+      }
+    }
+
+    /* ── Small phones 360–479px ── */
+    @media (min-width: 360px) and (max-width: 479px) {
+      .nes-container {
+        padding: 1.2rem 0.8rem !important;
+      }
+
+      .type-card {
+        padding: 8px 4px;
+      }
+    }
+
+    /* ── Tablets 600px+ ── */
+    @media (min-width: 600px) {
+      #app {
+        padding: 24px 0 48px;
+      }
+
+      .screen.active {
+        gap: 18px;
+      }
+
+      .nes-container {
+        padding: 1.8rem 1.4rem !important;
+      }
+
+      .type-card {
+        padding: 14px 8px;
+        gap: 8px;
+      }
+
+      .actions-grid {
+        gap: 12px;
+      }
+    }
+
+    /* ── Desktop 768px+ ── */
+    @media (min-width: 768px) {
+      .game-title {
+        font-size: 1.6rem;
+      }
+
+      .game-subtitle {
+        font-size: 0.65rem;
+      }
+
+      .action-btn {
+        padding: 14px 8px !important;
+      }
+
+      .pet-emoji {
+        font-size: 5rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="app">
+    <div class="container">
+      <h1 class="game-title">🐣 REGENMON</h1>
+      <p class="game-subtitle">Tu mascota virtual de píxeles</p>
+
+      <!-- ══════════════════
+         PANTALLA 1: CREACIÓN
+    ══════════════════ -->
+      <section id="screen-create" class="screen active nes-container with-title">
+        <p class="title">Nueva Mascota</p>
+
+        <div class="form-group">
+          <label for="pet-name-input">Nombre</label>
+          <input id="pet-name-input" type="text" class="nes-input" placeholder="Escribe un nombre…" maxlength="15"
+            autocomplete="off" />
+          <span id="name-hint" class="hint">2 a 15 caracteres</span>
+        </div>
+
+        <div class="form-group">
+          <label>Tipo de elemento</label>
+          <div class="type-grid">
+            <div class="type-card" data-type="seed">
+              <span class="type-emoji">🌱</span>
+              <span class="type-label">Semilla</span>
+              <span class="type-desc">Tierra &amp; vida</span>
+            </div>
+            <div class="type-card" data-type="drop">
+              <span class="type-emoji">💧</span>
+              <span class="type-label">Gota</span>
+              <span class="type-desc">Agua &amp; calma</span>
+            </div>
+            <div class="type-card" data-type="spark">
+              <span class="type-emoji">✨</span>
+              <span class="type-label">Chispa</span>
+              <span class="type-desc">Fuego &amp; energía</span>
+            </div>
+          </div>
+          <span id="type-hint" class="hint">Selecciona un elemento</span>
+        </div>
+
+        <button id="hatch-btn" type="button" class="nes-btn is-disabled btn-full" disabled>
+          ¡Eclosionar!
+        </button>
+      </section>
+
+      <!-- ══════════════════
+         PANTALLA 2: MASCOTA
+    ══════════════════ -->
+      <section id="screen-pet" class="screen">
+
+        <!-- Tarjeta de mascota -->
+        <div id="pet-card" class="pet-card nes-container">
+          <p class="pet-name" id="display-name"></p>
+          <div class="pet-emoji" id="display-emoji"></div>
+          <span class="pet-type-badge" id="display-type"></span>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="nes-container with-title stats-section">
+          <p class="title">Stats</p>
+
+          <div class="stat-row">
+            <div class="stat-label">
+              <span>😊 Felicidad</span>
+              <span class="stat-value" id="val-happiness">50</span>
+            </div>
+            <progress id="bar-happiness" class="nes-progress is-success" value="50" max="100"></progress>
+          </div>
+
+          <div class="stat-row">
+            <div class="stat-label">
+              <span>⚡ Energía</span>
+              <span class="stat-value" id="val-energy">50</span>
+            </div>
+            <progress id="bar-energy" class="nes-progress is-warning" value="50" max="100"></progress>
+          </div>
+
+          <div class="stat-row">
+            <div class="stat-label">
+              <span>🍖 Hambre</span>
+              <span class="stat-value" id="val-hunger">50</span>
+            </div>
+            <progress id="bar-hunger" class="nes-progress is-error" value="50" max="100"></progress>
+          </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="nes-container with-title">
+          <p class="title">Acciones</p>
+          <div class="actions-grid">
+            <button id="btn-feed" type="button" class="nes-btn is-success action-btn">
+              <span class="action-icon">🍖</span><span>Alimentar</span>
+            </button>
+            <button id="btn-play" type="button" class="nes-btn is-primary action-btn">
+              <span class="action-icon">🎮</span><span>Jugar</span>
+            </button>
+            <button id="btn-sleep" type="button" class="nes-btn is-warning action-btn">
+              <span class="action-icon">💤</span><span>Descansar</span>
+            </button>
+            <button id="btn-train" type="button" class="nes-btn action-btn">
+              <span class="action-icon">🏋️</span><span>Entrenar</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Info bar -->
+        <div class="nes-container">
+          <div class="info-bar">
+            <span id="display-age" class="age-display"></span>
+            <button id="btn-reset" type="button" class="nes-btn is-error btn-reset-sm">
+              🗑 Reiniciar
+            </button>
+          </div>
+        </div>
+
+      </section>
+    </div><!-- /.container -->
+  </div><!-- /#app -->
+
+  <!-- ══════════════════
+     MODAL CONFIRMACIÓN
+══════════════════ -->
+  <div id="modal-reset" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-box nes-container">
+      <p class="modal-title">⚠ Reiniciar</p>
+      <p class="modal-body">
+        ¿Seguro que quieres abandonar a<br>
+        <strong id="modal-pet-name" style="color:#fff;"></strong>?<br><br>
+        Esta acción no se puede deshacer.
+      </p>
+      <div class="modal-actions">
+        <button id="modal-cancel" type="button" class="nes-btn">Cancelar</button>
+        <button id="modal-confirm" type="button" class="nes-btn is-error">Sí, reiniciar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast de feedback -->
+  <div id="toast"></div>
+
+  <script>
+    /* ══════════════════════════════════════════════
+       REGENMON — Lógica
+    ══════════════════════════════════════════════ */
+    const STORAGE_KEY = 'regenmon_state';
+
+    const TYPE_META = {
+      seed: { emoji: '🌱', label: 'Semilla · Tierra', cls: 'type-seed' },
+      drop: { emoji: '💧', label: 'Gota · Agua', cls: 'type-drop' },
+      spark: { emoji: '✨', label: 'Chispa · Fuego', cls: 'type-spark' },
+    };
+
+    let state = null;
+
+    // DOM refs — creation
+    const nameInput = document.getElementById('pet-name-input');
+    const nameHint = document.getElementById('name-hint');
+    const typeHint = document.getElementById('type-hint');
+    const hatchBtn = document.getElementById('hatch-btn');
+    const typeCards = document.querySelectorAll('.type-card');
+
+    // DOM refs — pet screen
+    const displayName = document.getElementById('display-name');
+    const displayEmoji = document.getElementById('display-emoji');
+    const displayType = document.getElementById('display-type');
+    const petCard = document.getElementById('pet-card');
+    const displayAge = document.getElementById('display-age');
+
+    const barHappiness = document.getElementById('bar-happiness');
+    const barEnergy = document.getElementById('bar-energy');
+    const barHunger = document.getElementById('bar-hunger');
+    const valHappiness = document.getElementById('val-happiness');
+    const valEnergy = document.getElementById('val-energy');
+    const valHunger = document.getElementById('val-hunger');
+
+    const btnFeed = document.getElementById('btn-feed');
+    const btnPlay = document.getElementById('btn-play');
+    const btnSleep = document.getElementById('btn-sleep');
+    const btnTrain = document.getElementById('btn-train');
+    const btnReset = document.getElementById('btn-reset');
+
+    // DOM refs — modal
+    const modalReset = document.getElementById('modal-reset');
+    const modalPetName = document.getElementById('modal-pet-name');
+    const modalCancel = document.getElementById('modal-cancel');
+    const modalConfirm = document.getElementById('modal-confirm');
+
+    // Toast
+    const toast = document.getElementById('toast');
+    let toastTimer = null;
+
+    function showToast(msg, duration = 2200) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+    }
+
+    // Utils
+    function clamp(val, min = 0, max = 100) {
+      return Math.min(max, Math.max(min, val));
+    }
+
+    function getAge(createdAt) {
+      const diff = Date.now() - createdAt;
+      const days = Math.floor(diff / 86400000);
+      const hours = Math.floor((diff % 86400000) / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      if (days > 0) return `${days}d ${hours}h de vida`;
+      if (hours > 0) return `${hours}h ${mins}m de vida`;
+      return `${mins}m de vida`;
+    }
+
+    // Persistence
+    function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    function loadState() {
+      try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; }
+      catch { return null; }
+    }
+
+    // Render pet screen
+    function renderPet() {
+      const meta = TYPE_META[state.type];
+      displayName.textContent = state.name;
+      displayEmoji.textContent = meta.emoji;
+      displayType.textContent = meta.label;
+      petCard.className = `pet-card nes-container ${meta.cls}`;
+      updateBar(barHappiness, valHappiness, state.stats.happiness);
+      updateBar(barEnergy, valEnergy, state.stats.energy);
+      updateBar(barHunger, valHunger, state.stats.hunger);
+      displayAge.textContent = getAge(state.createdAt);
+    }
+
+    function updateBar(bar, label, val) {
+      const v = Math.round(val);
+      bar.value = v;
+      label.textContent = v;
+    }
+
+    // Screen switch
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    // Form validation
+    let selectedType = null;
+
+    function validateForm() {
+      const name = nameInput.value.trim();
+      const nameOk = name.length >= 2 && name.length <= 15;
+      const typeOk = selectedType !== null;
+
+      if (name.length === 0) {
+        nameInput.classList.remove('is-error');
+        nameHint.textContent = '2 a 15 caracteres';
+        nameHint.classList.remove('error');
+      } else if (!nameOk) {
+        nameInput.classList.add('is-error');
+        nameHint.textContent = name.length < 2 ? 'Mínimo 2 caracteres' : 'Máximo 15 caracteres';
+        nameHint.classList.add('error');
+      } else {
+        nameInput.classList.remove('is-error');
+        nameHint.textContent = '✓ Nombre válido';
+        nameHint.classList.remove('error');
+      }
+
+      if (nameOk && typeOk) {
+        hatchBtn.disabled = false;
+        hatchBtn.classList.remove('is-disabled');
+        hatchBtn.classList.add('is-primary');
+      } else {
+        hatchBtn.disabled = true;
+        hatchBtn.classList.add('is-disabled');
+        hatchBtn.classList.remove('is-primary');
+      }
+    }
+
+    nameInput.addEventListener('input', validateForm);
+
+    typeCards.forEach(card => {
+      card.addEventListener('click', () => {
+        typeCards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedType = card.dataset.type;
+        typeHint.textContent = `✓ ${TYPE_META[selectedType].label}`;
+        typeHint.classList.remove('error');
+        validateForm();
+      });
+    });
+
+    hatchBtn.addEventListener('click', () => {
+      if (hatchBtn.disabled) return;
+      state = {
+        name: nameInput.value.trim(),
+        type: selectedType,
+        createdAt: Date.now(),
+        stats: { happiness: 50, energy: 50, hunger: 50 },
+      };
+      saveState();
+      renderPet();
+      showScreen('screen-pet');
+      showToast(`¡${state.name} ha eclosionado! 🎉`);
+    });
+
+    // Actions
+    function doAction({ happiness = 0, energy = 0, hunger = 0, msg }) {
+      state.stats.happiness = clamp(state.stats.happiness + happiness);
+      state.stats.energy = clamp(state.stats.energy + energy);
+      state.stats.hunger = clamp(state.stats.hunger + hunger);
+      saveState();
+      renderPet();
+      showToast(msg);
+    }
+
+    btnFeed.addEventListener('click', () => doAction({ hunger: -15, happiness: 5, energy: 5, msg: '🍖 ¡Ñam ñam! Hambre reducida.' }));
+    btnPlay.addEventListener('click', () => doAction({ happiness: 15, hunger: 10, energy: -10, msg: '🎮 ¡Qué divertido!' }));
+    btnSleep.addEventListener('click', () => doAction({ energy: 20, hunger: 5, happiness: 5, msg: '💤 Ahhh… Energía recuperada.' }));
+    btnTrain.addEventListener('click', () => doAction({ energy: -20, happiness: 10, hunger: 15, msg: '🏋️ ¡Gran entrenamiento!' }));
+
+    // Reset modal
+    btnReset.addEventListener('click', () => {
+      modalPetName.textContent = state?.name || '';
+      modalReset.classList.add('open');
+    });
+
+    modalCancel.addEventListener('click', () => modalReset.classList.remove('open'));
+
+    modalReset.addEventListener('click', e => {
+      if (e.target === modalReset) modalReset.classList.remove('open');
+    });
+
+    modalConfirm.addEventListener('click', () => {
+      localStorage.removeItem(STORAGE_KEY);
+      state = null;
+      modalReset.classList.remove('open');
+
+      nameInput.value = '';
+      nameInput.classList.remove('is-error');
+      nameHint.textContent = '2 a 15 caracteres';
+      nameHint.classList.remove('error');
+      typeHint.textContent = 'Selecciona un elemento';
+      selectedType = null;
+      typeCards.forEach(c => c.classList.remove('selected'));
+      hatchBtn.disabled = true;
+      hatchBtn.classList.add('is-disabled');
+      hatchBtn.classList.remove('is-primary');
+
+      showScreen('screen-create');
+      showToast('Mascota eliminada. ¡Crea una nueva! 🥚');
+    });
+
+    // Auto-update age display every minute
+    setInterval(() => { if (state) displayAge.textContent = getAge(state.createdAt); }, 60000);
+
+    // Stat degradation every 2 minutes
+    setInterval(() => {
+      if (!state) return;
+      state.stats.happiness = clamp(state.stats.happiness - 2);
+      state.stats.energy = clamp(state.stats.energy - 3);
+      state.stats.hunger = clamp(state.stats.hunger + 4);
+      saveState();
+      renderPet();
+    }, 120000);
+
+    // Init: restore from localStorage or show creation screen
+    (function init() {
+      const saved = loadState();
+      if (saved?.name && saved?.type && saved?.stats) {
+        state = saved;
+        renderPet();
+        showScreen('screen-pet');
+      } else {
+        showScreen('screen-create');
+      }
+    })();
+  </script>
+</body>
+
+</html>
