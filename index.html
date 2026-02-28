@@ -1298,7 +1298,10 @@
         });
 
         const data = await response.json();
-        return data.reply;
+        if (!data.choices?.[0]?.message?.content) {
+          throw new Error('Invalid response from API');
+        }
+        return data.choices[0].message.content.trim();
       } catch (error) {
         console.error('Error getting Regenmon response:', error);
         return "¡Ups! Estoy un poco cansado ahora, ¿podemos hablar más tarde? 😴";
