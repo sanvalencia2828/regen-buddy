@@ -108,12 +108,6 @@
       width: 100%;
     }
 
-    /* NES.css sets .title to white — override so it's visible */
-    .nes-container.with-title>.title {
-      color: #92cc41 !important;
-      background: #212529;
-    }
-
     /* Input must respect parent width */
     .nes-input {
       width: 100% !important;
@@ -452,15 +446,8 @@
     }
 
     @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(5px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .message-user {
@@ -506,15 +493,8 @@
     }
 
     @keyframes floatUp {
-      0% {
-        transform: translateY(0);
-        opacity: 1;
-      }
-
-      100% {
-        transform: translateY(-50px);
-        opacity: 0;
-      }
+      0% { transform: translateY(0); opacity: 1; }
+      100% { transform: translateY(-50px); opacity: 0; }
     }
 
     .message {
@@ -527,15 +507,8 @@
     }
 
     @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(5px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .message-user {
@@ -804,23 +777,19 @@
           </div>
 
           <!-- Chat Messages Container -->
-          <div id="chat-messages" class="chat-messages"
-            style="min-height: 150px; max-height: 250px; overflow-y: auto; margin-bottom: 12px; padding: 8px; background: #1a1a2e; border-radius: 4px;">
+          <div id="chat-messages" class="chat-messages" style="min-height: 150px; max-height: 250px; overflow-y: auto; margin-bottom: 12px; padding: 8px; background: #1a1a2e; border-radius: 4px;">
             <!-- Messages will be dynamically added here -->
           </div>
 
           <!-- Typing Indicator -->
-          <div id="typing-indicator" class="typing-indicator"
-            style="display: none; margin-bottom: 8px; font-size: 0.7rem; color: #9b9b9b;">
+          <div id="typing-indicator" class="typing-indicator" style="display: none; margin-bottom: 8px; font-size: 0.7rem; color: #9b9b9b;">
             <span id="regenmon-typing">Regenmon está escribiendo...</span>
           </div>
 
           <!-- Chat Input Area -->
           <div class="chat-input-area" style="display: flex; gap: 8px;">
-            <input id="chat-input" type="text" class="nes-input" placeholder="Habla con tu Regenmon..."
-              style="flex: 1; font-size: 0.6rem !important;" maxlength="100" />
-            <button id="send-btn" type="button" class="nes-btn is-primary"
-              style="font-size: 0.6rem !important; padding: 8px 12px !important;">
+            <input id="chat-input" type="text" class="nes-input" placeholder="Habla con tu Regenmon..." style="flex: 1; font-size: 0.6rem !important;" maxlength="100" />
+            <button id="send-btn" type="button" class="nes-btn is-primary" style="font-size: 0.6rem !important; padding: 8px 12px !important;">
               Enviar
             </button>
           </div>
@@ -981,30 +950,16 @@
 
     function validateForm() {
       const name = nameInput.value.trim();
-      const validChars = /^[a-zA-Z0-9_]+$/.test(name);
-      const noLeadingDigit = name.length === 0 || !/^\d/.test(name);
-      const nameOk = name.length >= 2 && name.length <= 15 && validChars && noLeadingDigit;
+      const nameOk = name.length >= 2 && name.length <= 15;
       const typeOk = selectedType !== null;
 
       if (name.length === 0) {
         nameInput.classList.remove('is-error');
-        nameHint.textContent = '2 a 15 caracteres, solo letras, dígitos o _';
+        nameHint.textContent = '2 a 15 caracteres';
         nameHint.classList.remove('error');
-      } else if (/^\d/.test(name)) {
+      } else if (!nameOk) {
         nameInput.classList.add('is-error');
-        nameHint.textContent = 'El nombre no puede empezar con un número';
-        nameHint.classList.add('error');
-      } else if (!validChars) {
-        nameInput.classList.add('is-error');
-        nameHint.textContent = 'Solo letras, dígitos y guión bajo (_)';
-        nameHint.classList.add('error');
-      } else if (name.length < 2) {
-        nameInput.classList.add('is-error');
-        nameHint.textContent = 'Mínimo 2 caracteres';
-        nameHint.classList.add('error');
-      } else if (name.length > 15) {
-        nameInput.classList.add('is-error');
-        nameHint.textContent = 'Máximo 15 caracteres';
+        nameHint.textContent = name.length < 2 ? 'Mínimo 2 caracteres' : 'Máximo 15 caracteres';
         nameHint.classList.add('error');
       } else {
         nameInput.classList.remove('is-error');
@@ -1291,14 +1246,26 @@
       Regenmon:`;
 
       try {
-        const response = await fetch('/api/chat', {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt })
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer YOUR_OPENAI_API_KEY_HERE'  // Replace with your actual API key
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [{role: "user", content: prompt}],
+            max_tokens: 100,
+            temperature: 0.7
+          })
         });
 
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const data = await response.json();
-        return data.reply;
+        return data.choices[0].message.content.trim();
       } catch (error) {
         console.error('Error getting Regenmon response:', error);
         return "¡Ups! Estoy un poco cansado ahora, ¿podemos hablar más tarde? 😴";
