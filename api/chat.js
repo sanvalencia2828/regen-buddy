@@ -1,26 +1,4 @@
-export default async function handler(req, res) {
-<<<<<<< HEAD
-    if (req.method !== 'POST') return res.status(405).end();
-
-    const { prompt } = req.body;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-            model: 'gpt-3.5-turbo',
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 100,
-            temperature: 0.7,
-        }),
-    });
-
-    const data = await response.json();
-    res.status(response.status).json(data);
-=======
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -60,5 +38,4 @@ export default async function handler(req, res) {
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
   }
->>>>>>> 40e8ac816f590273761235ff927c6a54f7176920
-}
+};
