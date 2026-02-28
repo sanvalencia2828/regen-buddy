@@ -1145,20 +1145,6 @@
       renderPet();
     }, 120000);
 
-    // Init: restore from localStorage or show creation screen
-    (function init() {
-      const saved = loadState();
-      if (saved?.name && saved?.type && saved?.stats) {
-        state = saved;
-        renderPet();
-        showScreen('screen-pet');
-        loadChatHistory(); // Load chat history if exists
-        updateMemoryIndicator(); // Update memory indicator on load
-      } else {
-        showScreen('screen-create');
-      }
-    })();
-
     /* ══════════════════════════════════════════════
        CHAT SYSTEM — New functionality
     ══════════════════════════════════════════════ */
@@ -1173,6 +1159,20 @@
 
     let chatHistory = [];
     let memories = [];
+
+    // Init: restore from localStorage or show creation screen
+    (function init() {
+      const saved = loadState();
+      if (saved?.name && saved?.type && saved?.stats) {
+        state = saved;
+        renderPet();
+        showScreen('screen-pet');
+        loadChatHistory(); // Load chat history if exists
+        updateMemoryIndicator(); // Update memory indicator on load
+      } else {
+        showScreen('screen-create');
+      }
+    })();
 
     // Load chat history from localStorage
     function loadChatHistory() {
