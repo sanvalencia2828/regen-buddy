@@ -1298,13 +1298,17 @@
         });
 
         const data = await response.json();
+        console.log('API response:', JSON.stringify(data));
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${data.error || JSON.stringify(data)}`);
+        }
         if (!data.choices?.[0]?.message?.content) {
-          throw new Error('Invalid response from API');
+          throw new Error('Respuesta inesperada: ' + JSON.stringify(data));
         }
         return data.choices[0].message.content.trim();
       } catch (error) {
         console.error('Error getting Regenmon response:', error);
-        return "¡Ups! Estoy un poco cansado ahora, ¿podemos hablar más tarde? 😴";
+        return `⚠️ Error: ${error.message}`;
       }
     }
 
