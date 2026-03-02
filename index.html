@@ -807,6 +807,14 @@
           </div>
         </div>
 
+        <!-- Action History -->
+        <div class="nes-container with-title" id="action-history-section">
+          <p class="title">📜 Historial</p>
+          <div id="action-history-list" style="max-height:180px;overflow-y:auto;"></div>
+          <button id="btn-clear-history" type="button" class="nes-btn is-error btn-reset-sm"
+            style="margin-top:8px;width:100%;">🗑 Limpiar</button>
+        </div>
+
         <!-- Info bar -->
         <div class="nes-container">
           <div class="info-bar">
@@ -1097,6 +1105,57 @@
       historyContent.innerHTML = html;
     }
 
+    /* ───────────────────────────────────────────────
+       ACTION HISTORY
+    ─────────────────────────────────────────────── */
+    const ACTION_HISTORY_KEY = 'regenmon_action_history';
+    const actionHistoryList = document.getElementById('action-history-list');
+    const btnClearHistory = document.getElementById('btn-clear-history');
+
+    function relativeTime(ts) {
+      const diff = Date.now() - ts;
+      const m = Math.floor(diff / 60000);
+      const h = Math.floor(diff / 3600000);
+      const d = Math.floor(diff / 86400000);
+      if (d > 0) return `hace ${d}d`;
+      if (h > 0) return `hace ${h}h`;
+      if (m > 0) return `hace ${m}m`;
+      return 'ahora';
+    }
+
+    function addActionHistory(action, coins) {
+      let hist = [];
+      try { hist = JSON.parse(localStorage.getItem(ACTION_HISTORY_KEY) || '[]'); } catch (e) { hist = []; }
+      hist.unshift({ action, coins, timestamp: Date.now() });
+      if (hist.length > 10) hist = hist.slice(0, 10);
+      try { localStorage.setItem(ACTION_HISTORY_KEY, JSON.stringify(hist)); } catch (e) { }
+      renderActionHistory(hist);
+    }
+
+    function renderActionHistory(hist) {
+      if (!actionHistoryList) return;
+      if (!hist) {
+        try { hist = JSON.parse(localStorage.getItem(ACTION_HISTORY_KEY) || '[]'); } catch (e) { hist = []; }
+      }
+      if (hist.length === 0) {
+        actionHistoryList.innerHTML = '<div style="font-size:0.5rem;color:#9b9b9b;padding:6px 0;">Sin actividad aún</div>';
+        return;
+      }
+      actionHistoryList.innerHTML = hist.map(e => {
+        const coinColor = e.coins > 0 ? '#92cc41' : e.coins < 0 ? '#e76e55' : '#9b9b9b';
+        const coinStr = e.coins === 0 ? '' : `<span style="color:${coinColor};">${e.coins > 0 ? '+' : ''}${e.coins} 🍊</span>`;
+        return `<div style="font-size:0.5rem;border-bottom:1px solid #333;padding:6px 0;display:flex;justify-content:space-between;gap:4px;flex-wrap:wrap;">
+          <span>${e.action} ${coinStr}</span>
+          <span style="color:#9b9b9b;white-space:nowrap;">${relativeTime(e.timestamp)}</span>
+        </div>`;
+      }).join('');
+    }
+
+    function clearActionHistory() {
+      localStorage.removeItem(ACTION_HISTORY_KEY);
+      renderActionHistory([]);
+    }
+
     // Collection button functions
     const LAST_FAUCET_KEY = 'cv-last-faucet';
 
@@ -1180,6 +1239,7 @@
       showCoinAnimation(50);
       showToast('✅ ¡Recibiste 50 🍊!');
       addToHistory('Monedas', 50);
+      addActionHistory('🍊 Conseguir monedas', 50);
       saveUserData();
       updateFeedButtonState();
       faucetBtn.style.display = 'none';
@@ -1326,7 +1386,7 @@
     });
 
     // Actions
-    function doAction({ happiness = 0, energy = 0, hunger = 0, msg }) {
+    function doAction({ happiness = 0, energy = 0, hunger = 0, msg, actionName = '', coins = 0 }) {
       // Store original stat values for animation
       const originalHappiness = state.stats.happiness;
       const originalEnergy = state.stats.energy;
@@ -1351,16 +1411,21 @@
       renderPet();
       showToast(msg);
 
-      // Add to history if it's a coin-related action
-      if (cost > 0 && actionName) {
-        addToHistory(actionName, -cost);
-      }
+      // Log to action history
+      if (actionName) addActionHistory(actionName, coins);
     }
 
-    btnFeed.addEventListener('click', () => doAction({ hunger: -15, happiness: 5, energy: 5, msg: '🍖 ¡Ñam ñam! Hambre reducida.' }));
-    btnPlay.addEventListener('click', () => doAction({ happiness: 15, hunger: 10, energy: -10, msg: '🎮 ¡Qué divertido!' }));
-    btnSleep.addEventListener('click', () => doAction({ energy: 20, hunger: 5, happiness: 5, msg: '💤 Ahhh… Energía recuperada.' }));
-    btnTrain.addEventListener('click', () => doAction({ energy: -20, happiness: 10, hunger: 15, msg: '🏋️ ¡Gran entrenamiento!' }));
+    btnFeed.addEventListener('click', () => {
+      if (typeof userCoins !== 'undefined' && userCoins < 10) {
+        showToast('¿No tienes suficientes 🍊 para alimentar!');
+        return;
+      }
+      if (typeof userCoins !== 'undefined') { userCoins -= 10; updateCurrencyDisplay(); saveUserData(); }
+      doAction({ hunger: -15, happiness: 5, energy: 5, msg: '🍖 ¡Ñam ñam! Hambre reducida.', actionName: '🍎 Alimentar', coins: -10 });
+    });
+    btnPlay.addEventListener('click', () => doAction({ happiness: 15, hunger: 10, energy: -10, msg: '🎮 ¡Qué divertido!', actionName: '🎮 Jugar', coins: 0 }));
+    btnSleep.addEventListener('click', () => doAction({ energy: 20, hunger: 5, happiness: 5, msg: '💤 Ahhh… Energía recuperada.', actionName: '💤 Descansar', coins: 0 }));
+    btnTrain.addEventListener('click', () => doAction({ energy: -20, happiness: 10, hunger: 15, msg: '🏋️ ¡Gran entrenamiento!', actionName: '🏋️ Entrenar', coins: 0 }));
 
     // Reset modal
     btnReset.addEventListener('click', () => {
@@ -1717,8 +1782,12 @@
     faucetBtn.addEventListener('click', faucetClaim);
     if (collectCoinsBtn) collectCoinsBtn.addEventListener('click', collectCoins);
 
-    // Initialize chat system
+    // Clear action history
+    if (btnClearHistory) btnClearHistory.addEventListener('click', clearActionHistory);
+
+    // Initialize chat system + action history
     loadChatHistory();
+    renderActionHistory();
   </script>
 </body>
 
