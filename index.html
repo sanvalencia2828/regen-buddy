@@ -689,6 +689,7 @@
     <div class="header">
       <div id="user-info" class="user-info">¡Bienvenido!</div>
       <div id="currency-display" class="currency-display">🍊 — $FRUTA</div>
+      <button id="faucet-btn" class="nes-btn is-warning login-btn" style="display: none;">🍊 Conseguir monedas</button>
       <button id="login-btn" class="nes-btn is-primary login-btn">Iniciar Sesión</button>
       <button id="logout-btn" class="nes-btn is-error logout-btn" style="display: none;">Cerrar Sesión</button>
     </div>
@@ -947,6 +948,9 @@
     const historySection = document.getElementById('history-section');
     const historyContent = document.getElementById('history-content');
 
+    // DOM refs — header faucet button
+    const faucetBtn = document.getElementById('faucet-btn');
+
     // Toast
     const toast = document.getElementById('toast');
     let toastTimer = null;
@@ -1117,6 +1121,7 @@
       } else {
         collectCoinsSection.style.display = 'none';
       }
+      updateFaucetVisibility();
     }
 
     function collectCoins() {
@@ -1142,6 +1147,42 @@
 
       // Update feed button state
       updateFeedButtonState();
+    }
+
+    // ── Header faucet button ──
+    const FAUCET_KEY = 'faucet_last_claim';
+
+    function updateFaucetVisibility() {
+      if (!faucetBtn) return;
+      const loggedIn = typeof isLoggedIn !== 'undefined' ? isLoggedIn : false;
+      if (loggedIn && userCoins === 0) {
+        const last = localStorage.getItem(FAUCET_KEY);
+        if (last) {
+          const hoursPassed = (Date.now() - parseInt(last)) / 3600000;
+          faucetBtn.style.display = hoursPassed >= 1 ? 'inline-block' : 'none';
+        } else {
+          faucetBtn.style.display = 'inline-block';
+        }
+      } else {
+        faucetBtn.style.display = 'none';
+      }
+    }
+
+    function faucetClaim() {
+      const last = localStorage.getItem(FAUCET_KEY);
+      if (last && (Date.now() - parseInt(last)) / 3600000 < 1) {
+        showToast('⏳ Espera un poco antes de reclamar más monedas');
+        return;
+      }
+      userCoins += 50;
+      localStorage.setItem(FAUCET_KEY, Date.now().toString());
+      updateCurrencyDisplay();
+      showCoinAnimation(50);
+      showToast('✅ ¡Recibiste 50 🍊!');
+      addToHistory('Monedas', 50);
+      saveUserData();
+      updateFeedButtonState();
+      faucetBtn.style.display = 'none';
     }
 
     // Persistence
@@ -1384,19 +1425,7 @@
       renderPet();
     }, 120000);
 
-    // Init: restore from localStorage or show creation screen
-    (function init() {
-      const saved = loadState();
-      if (saved?.name && saved?.type && saved?.stats) {
-        state = saved;
-        renderPet();
-        showScreen('screen-pet');
-        loadChatHistory(); // Load chat history if exists
-        updateMemoryIndicator(); // Update memory indicator on load
-      } else {
-        showScreen('screen-create');
-      }
-    })();
+
 
     /* ══════════════════════════════════════════════
        CHAT SYSTEM — New functionality
@@ -1683,6 +1712,10 @@
         sendMessage();
       }
     });
+
+    // Faucet + collect-coins click handlers
+    faucetBtn.addEventListener('click', faucetClaim);
+    if (collectCoinsBtn) collectCoinsBtn.addEventListener('click', collectCoins);
 
     // Initialize chat system
     loadChatHistory();
