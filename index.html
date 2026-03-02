@@ -14,9 +14,6 @@
   <!-- NES.css -->
   <link rel="stylesheet" href="https://unpkg.com/nes.css@latest/css/nes.min.css" />
 
-  <!-- Privy JS SDK -->
-  <script type="module" src="https://esm.sh/@privy-io/js-sdk-core@0.36.2"></script>
-
   <style>
     /* ════════════════════════════════════════
        RESET & BASE
@@ -54,55 +51,6 @@
       min-height: 100vh;
       padding: 12px 0 40px;
       width: 100%;
-    }
-
-    /* ════════════════════════════════════════
-       HEADER
-    ════════════════════════════════════════ */
-    .header {
-      width: 95%;
-      max-width: 500px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      padding: 10px 0;
-      border-bottom: 2px solid #444;
-    }
-
-    .user-info {
-      font-size: clamp(0.4rem, 1.8vw, 0.5rem);
-      color: #92cc41;
-      max-width: 60%;
-      word-break: break-word;
-    }
-
-    .currency-display {
-      font-size: clamp(0.4rem, 1.8vw, 0.5rem);
-      color: #ff9900;
-      background: #1a1a2e;
-      padding: 4px 8px;
-      border-radius: 4px;
-      border: 2px solid #ff9900;
-    }
-
-    .login-btn,
-    .logout-btn {
-      font-size: clamp(0.35rem, 1.6vw, 0.45rem) !important;
-      padding: 6px 10px !important;
-    }
-
-    /* ════════════════════════════════════════
-       LOGIN SCREEN
-    ════════════════════════════════════════ */
-    #screen-login {
-      text-align: center;
-      padding: 20px;
-    }
-
-    #screen-login .nes-btn {
-      margin: 20px auto;
-      display: block;
     }
 
     /* Main content wrapper — 95% width, max 500px, never overflows */
@@ -872,6 +820,13 @@
         <div class="nes-container with-title chat-section" style="position: relative;">
           <p class="title">💬 Chat</p>
 
+          <!-- Botón de Recolección de Monedas -->
+          <div id="collect-coins-section" style="margin: 10px 0; display: none;">
+            <button id="collect-coins-btn" type="button" class="nes-btn is-warning" style="width: 100%;">
+              🍊 Conseguir monedas
+            </button>
+          </div>
+
           <!-- Memory Indicator -->
           <div id="memory-indicator" class="memory-indicator">
             🧠 <span id="memory-count">0</span> memorias
@@ -900,6 +855,14 @@
           </div>
         </div>
 
+        <!-- Historial de Actividades -->
+        <div id="history-section" class="nes-container with-title" style="margin-top: 10px;">
+          <p class="title">📜 Bitácora de Viaje</p>
+          <div id="history-content" style="min-height: 50px; max-height: 150px; overflow-y: auto; font-size: 0.5rem;">
+            <!-- Historial se llenará dinámicamente -->
+          </div>
+        </div>
+
       </section>
     </div><!-- /.container -->
   </div><!-- /#app -->
@@ -925,188 +888,7 @@
   <!-- Toast de feedback -->
   <div id="toast"></div>
 
-  <script type="module">
-    /* ══════════════════════════════════════════════
-       PRIVY AUTHENTICATION (Real SDK)
-    ══════════════════════════════════════════════ */
-    import { PrivyClient } from 'https://esm.sh/@privy-io/js-sdk-core@0.36.2';
-
-    const PRIVY_APP_ID = 'cmkyyrsbj04bck40bidlscndo';
-
-    let privyClient;
-    let isLoggedIn = false;
-    let userCoins = 100;
-    let coinChangeTimeout;
-    let currentUser = null;
-
-    // Initialize Privy
-    async function initPrivy() {
-      try {
-        privyClient = new PrivyClient({
-          appId: PRIVY_APP_ID,
-        });
-        // Check if user has an existing session
-        const user = await privyClient.user.get().catch(() => null);
-        if (user) {
-          currentUser = user;
-          isLoggedIn = true;
-          loadUserData();
-          updateUIAfterLogin();
-        } else {
-          updateUIAfterLogout();
-        }
-      } catch (e) {
-        console.warn('Privy SDK init error, using fallback auth:', e);
-        // Fallback: check localStorage
-        checkLoginStatusFallback();
-      }
-    }
-
-    // Login with Privy
-    async function loginWithPrivy() {
-      try {
-        if (privyClient) {
-          // Try Privy login flow
-          const { user } = await privyClient.auth.loginWithEmail();
-          currentUser = user;
-          isLoggedIn = true;
-          localStorage.setItem('privy_logged_in', 'true');
-          localStorage.setItem('user_email', user.email?.address || 'Usuario');
-          loadUserData();
-          updateUIAfterLogin();
-          showToast('✅ ¡Sesión iniciada!');
-        } else {
-          // Fallback: simple email prompt
-          loginWithFallback();
-        }
-      } catch (e) {
-        console.warn('Privy login error, using fallback:', e);
-        loginWithFallback();
-      }
-    }
-
-    // Fallback login (when Privy SDK fails)
-    function loginWithFallback() {
-      const email = prompt('Ingresa tu correo electrónico:');
-      if (email && email.includes('@')) {
-        isLoggedIn = true;
-        localStorage.setItem('privy_logged_in', 'true');
-        localStorage.setItem('user_email', email);
-        loadUserData();
-        updateUIAfterLogin();
-        showToast('✅ ¡Sesión iniciada!');
-      } else if (email) {
-        showToast('Correo inválido');
-      }
-    }
-
-    // Logout
-    async function logoutUser() {
-      try {
-        if (privyClient && currentUser) {
-          await privyClient.auth.logout().catch(() => {});
-        }
-      } catch (e) { /* ignore */ }
-      isLoggedIn = false;
-      currentUser = null;
-      localStorage.removeItem('privy_logged_in');
-      localStorage.removeItem('user_email');
-      userCoins = 100;
-      updateCurrencyDisplay();
-      updateUIAfterLogout();
-      showToast('Sesión cerrada');
-    }
-
-    function checkLoginStatusFallback() {
-      const savedLoginStatus = localStorage.getItem('privy_logged_in');
-      if (savedLoginStatus === 'true') {
-        isLoggedIn = true;
-        loadUserData();
-        updateUIAfterLogin();
-      } else {
-        updateUIAfterLogout();
-      }
-    }
-
-    function updateUIAfterLogin() {
-      document.getElementById('login-btn').style.display = 'none';
-      document.getElementById('logout-btn').style.display = 'inline-block';
-
-      const userInfo = document.getElementById('user-info');
-      userInfo.textContent = "👤 " + (localStorage.getItem('user_email') || 'Usuario');
-
-      updateCurrencyDisplay();
-
-      if (state) {
-        showScreen('screen-pet');
-      } else {
-        showScreen('screen-create');
-      }
-    }
-
-    function updateUIAfterLogout() {
-      document.getElementById('login-btn').style.display = 'inline-block';
-      document.getElementById('logout-btn').style.display = 'none';
-      document.getElementById('user-info').textContent = "¡Bienvenido!";
-      document.getElementById('currency-display').textContent = "🍊 — $FRUTA";
-
-      // Allow using app without login (show create screen)
-      if (state) {
-        showScreen('screen-pet');
-      } else {
-        showScreen('screen-create');
-      }
-    }
-
-    function updateCurrencyDisplay() {
-      const currencyDisplay = document.getElementById('currency-display');
-      currencyDisplay.textContent = `🍊 ${userCoins} $FRUTA`;
-    }
-
-    function saveUserData() {
-      if (isLoggedIn) {
-        localStorage.setItem('user_coins', userCoins.toString());
-        localStorage.setItem('privy_logged_in', 'true');
-      }
-    }
-
-    function loadUserData() {
-      if (isLoggedIn) {
-        const savedCoins = localStorage.getItem('user_coins');
-        if (savedCoins) {
-          userCoins = parseInt(savedCoins);
-        }
-      }
-    }
-
-    function clearUserData() {
-      localStorage.removeItem('user_coins');
-      localStorage.removeItem('privy_logged_in');
-      localStorage.removeItem('user_email');
-    }
-
-    /* ══════════════════════════════════════════════
-       COIN ANIMATION
-    ══════════════════════════════════════════════ */
-    function showCoinAnimation(amount) {
-      const animation = document.createElement('div');
-      animation.className = 'stat-change-animation';
-      animation.textContent = `${amount > 0 ? '+' : ''}${amount} 🍊`;
-      animation.style.color = amount > 0 ? '#92cc41' : '#e76e55';
-
-      // Position near the currency display
-      const rect = document.getElementById('currency-display').getBoundingClientRect();
-      animation.style.left = `${rect.left + rect.width / 2}px`;
-      animation.style.top = `${rect.top - 20}px`;
-
-      document.body.appendChild(animation);
-
-      // Remove animation after it completes
-      setTimeout(() => {
-        document.body.removeChild(animation);
-      }, 1000);
-    }
-
+  <script>
     /* ══════════════════════════════════════════════
        REGENMON — Lógica
     ══════════════════════════════════════════════ */
@@ -1159,6 +941,12 @@
     const modalCancel = document.getElementById('modal-cancel');
     const modalConfirm = document.getElementById('modal-confirm');
 
+    // DOM refs — collection button and history
+    const collectCoinsSection = document.getElementById('collect-coins-section');
+    const collectCoinsBtn = document.getElementById('collect-coins-btn');
+    const historySection = document.getElementById('history-section');
+    const historyContent = document.getElementById('history-content');
+
     // Toast
     const toast = document.getElementById('toast');
     let toastTimer = null;
@@ -1209,6 +997,151 @@
       if (days > 0) return `${days}d ${hours}h de vida`;
       if (hours > 0) return `${hours}h ${mins}m de vida`;
       return `${mins}m de vida`;
+    }
+
+    // History functions
+    const HISTORY_STORAGE_KEY = 'regenmon_history';
+
+    function addToHistory(action, coins) {
+      // Load existing history
+      let history = [];
+      try {
+        const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
+        if (saved) {
+          history = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.error('Error loading history:', e);
+        history = [];
+      }
+
+      // Add new entry
+      const entry = {
+        action: action,
+        coins: coins,
+        timestamp: Date.now()
+      };
+      history.unshift(entry); // Add to beginning
+
+      // Keep only last 10 entries
+      if (history.length > 10) {
+        history = history.slice(0, 10);
+      }
+
+      // Save to localStorage
+      try {
+        localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+      } catch (e) {
+        console.error('Error saving history:', e);
+      }
+
+      // Update UI
+      renderHistory();
+    }
+
+    function loadHistory() {
+      try {
+        const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
+        if (saved) {
+          const history = JSON.parse(saved);
+          renderHistory(history);
+          return history;
+        }
+      } catch (e) {
+        console.error('Error loading history:', e);
+      }
+      return [];
+    }
+
+    function renderHistory(history = null) {
+      if (!history) {
+        history = loadHistory();
+      }
+
+      let html = '';
+      if (history.length === 0) {
+        html = '<div class="history-entry">No hay actividades registradas</div>';
+      } else {
+        history.forEach(entry => {
+          const date = new Date(entry.timestamp);
+          const timeString = date.toTimeString().slice(0, 8); // HH:MM:SS
+
+          // Map action to emoji
+          let actionEmoji = '📝';
+          switch (entry.action) {
+            case 'Alimentar':
+              actionEmoji = '🍎';
+              break;
+            case 'Jugar':
+              actionEmoji = '🎮';
+              break;
+            case 'Descansar':
+              actionEmoji = '💤';
+              break;
+            case 'Entrenar':
+              actionEmoji = '🏋️';
+              break;
+            case 'Monedas':
+              actionEmoji = '🍊';
+              break;
+          }
+
+          html += `<div class="history-entry">${actionEmoji} ${entry.action} (${entry.coins >= 0 ? '+' : ''}${entry.coins} 🍊) — ${timeString}</div>`;
+        });
+      }
+
+      historyContent.innerHTML = html;
+    }
+
+    // Collection button functions
+    const LAST_FAUCET_KEY = 'cv-last-faucet';
+
+    function updateCollectButtonVisibility() {
+      if (isLoggedIn && userCoins === 0) {
+        // Check if 24 hours have passed since last collection
+        const lastCollection = localStorage.getItem(LAST_FAUCET_KEY);
+        if (lastCollection) {
+          const lastTime = parseInt(lastCollection);
+          const currentTime = Date.now();
+          const hoursPassed = (currentTime - lastTime) / (1000 * 60 * 60);
+
+          if (hoursPassed >= 24) {
+            collectCoinsSection.style.display = 'block';
+          } else {
+            collectCoinsSection.style.display = 'none';
+          }
+        } else {
+          // First time, show the button
+          collectCoinsSection.style.display = 'block';
+        }
+      } else {
+        collectCoinsSection.style.display = 'none';
+      }
+    }
+
+    function collectCoins() {
+      // Give 50 coins
+      userCoins += 50;
+
+      // Save timestamp
+      localStorage.setItem(LAST_FAUCET_KEY, Date.now().toString());
+
+      // Update UI
+      updateCurrencyDisplay();
+      showCoinAnimation(50);
+      showToast("¡Monedas recibidas!");
+
+      // Add to history
+      addToHistory('Monedas', 50);
+
+      // Hide button
+      collectCoinsSection.style.display = 'none';
+
+      // Save user data
+      saveUserData();
+
+      // Update feed button state
+      updateFeedButtonState();
     }
 
     // Persistence
@@ -1352,21 +1285,7 @@
     });
 
     // Actions
-    function doAction({ happiness = 0, energy = 0, hunger = 0, msg, cost = 0 }) {
-      // Check if user has enough coins for actions that cost money
-      if (cost > 0 && userCoins < cost) {
-        showErrorMessage("Necesitas más 🍊 para hacer esto");
-        return;
-      }
-
-      // Deduct coins if this action costs money
-      if (cost > 0) {
-        userCoins -= cost;
-        showCoinAnimation(-cost);
-        updateCurrencyDisplay();
-        saveUserData();
-      }
-
+    function doAction({ happiness = 0, energy = 0, hunger = 0, msg }) {
       // Store original stat values for animation
       const originalHappiness = state.stats.happiness;
       const originalEnergy = state.stats.energy;
@@ -1390,16 +1309,14 @@
       saveState();
       renderPet();
       showToast(msg);
+
+      // Add to history if it's a coin-related action
+      if (cost > 0 && actionName) {
+        addToHistory(actionName, -cost);
+      }
     }
 
-    btnFeed.addEventListener('click', () => {
-      if (state.stats.hunger <= 5) {
-        showToast("Tu Regenmon no tiene hambre");
-        return;
-      }
-      doAction({ hunger: -20, happiness: 10, energy: 5, msg: '🍎 ¡Ñam ñam! Gracias por la comida 😋', cost: 10 });
-    });
-
+    btnFeed.addEventListener('click', () => doAction({ hunger: -15, happiness: 5, energy: 5, msg: '🍖 ¡Ñam ñam! Hambre reducida.' }));
     btnPlay.addEventListener('click', () => doAction({ happiness: 15, hunger: 10, energy: -10, msg: '🎮 ¡Qué divertido!' }));
     btnSleep.addEventListener('click', () => doAction({ energy: 20, hunger: 5, happiness: 5, msg: '💤 Ahhh… Energía recuperada.' }));
     btnTrain.addEventListener('click', () => doAction({ energy: -20, happiness: 10, hunger: 15, msg: '🏋️ ¡Gran entrenamiento!' }));
@@ -1496,19 +1413,7 @@
     let chatHistory = [];
     let memories = [];
 
-    // Init: restore from localStorage or show creation screen
-    (function init() {
-      const saved = loadState();
-      if (saved?.name && saved?.type && saved?.stats) {
-        state = saved;
-        renderPet();
-        showScreen('screen-pet');
-        loadChatHistory(); // Load chat history if exists
-        updateMemoryIndicator(); // Update memory indicator on load
-      } else {
-        showScreen('screen-create');
-      }
-    })();
+
 
     // Load chat history from localStorage
     function loadChatHistory() {
@@ -1779,16 +1684,8 @@
       }
     });
 
-    // Login/Logout event listeners
-    document.getElementById('login-button').addEventListener('click', () => loginWithPrivy());
-    loginBtn.addEventListener('click', () => loginWithPrivy());
-    logoutBtn.addEventListener('click', () => logoutUser());
-
     // Initialize chat system
     loadChatHistory();
-
-    // Initialize Privy on load
-    initPrivy();
   </script>
 </body>
 
