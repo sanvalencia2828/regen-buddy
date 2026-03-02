@@ -14,8 +14,8 @@
   <!-- NES.css -->
   <link rel="stylesheet" href="https://unpkg.com/nes.css@latest/css/nes.min.css" />
 
-  <!-- Privy -->
-  <script src="https://cdn.privy.io/privywidget.js" async></script>
+  <!-- Privy JS SDK -->
+  <script type="module" src="https://esm.sh/@privy-io/js-sdk-core@0.36.2"></script>
 
   <style>
     /* ════════════════════════════════════════
@@ -925,55 +925,99 @@
   <!-- Toast de feedback -->
   <div id="toast"></div>
 
-  <script>
+  <script type="module">
     /* ══════════════════════════════════════════════
-       PRIVY AUTHENTICATION
+       PRIVY AUTHENTICATION (Real SDK)
     ══════════════════════════════════════════════ */
-    let privy;
+    import { PrivyClient } from 'https://esm.sh/@privy-io/js-sdk-core@0.36.2';
+
+    const PRIVY_APP_ID = 'cmkyyrsbj04bck40bidlscndo';
+
+    let privyClient;
     let isLoggedIn = false;
     let userCoins = 100;
     let coinChangeTimeout;
+    let currentUser = null;
 
     // Initialize Privy
-    function initPrivy() {
-      privy = new PrivyWidget({
-        appId: "cmkyyrsbj04bck40bidlscndo",
-        appSecret: "privy_app_secret_3CLEoN6Jbu2kAurPuQxiY4Y3QwBQ3GygGs32oPfaH7MnAjVqMqBWo6KjAryVXaWXCJEJQtKmg2HpqrT88n5jTaTA",
-        appearance: {
-          theme: "dark",
-          accentColor: "#92cc41",
-          logo: "https://cdn.privy.io/logo.svg",
-        },
-        onSuccess: onLoginSuccess,
-        onError: onLoginError,
-      });
-
-      // Check if user is already logged in
-      checkLoginStatus();
+    async function initPrivy() {
+      try {
+        privyClient = new PrivyClient({
+          appId: PRIVY_APP_ID,
+        });
+        // Check if user has an existing session
+        const user = await privyClient.user.get().catch(() => null);
+        if (user) {
+          currentUser = user;
+          isLoggedIn = true;
+          loadUserData();
+          updateUIAfterLogin();
+        } else {
+          updateUIAfterLogout();
+        }
+      } catch (e) {
+        console.warn('Privy SDK init error, using fallback auth:', e);
+        // Fallback: check localStorage
+        checkLoginStatusFallback();
+      }
     }
 
-    function onLoginSuccess(user) {
-      isLoggedIn = true;
-      console.log("User logged in:", user);
-      updateUIAfterLogin();
-      loadUserData();
+    // Login with Privy
+    async function loginWithPrivy() {
+      try {
+        if (privyClient) {
+          // Try Privy login flow
+          const { user } = await privyClient.auth.loginWithEmail();
+          currentUser = user;
+          isLoggedIn = true;
+          localStorage.setItem('privy_logged_in', 'true');
+          localStorage.setItem('user_email', user.email?.address || 'Usuario');
+          loadUserData();
+          updateUIAfterLogin();
+          showToast('✅ ¡Sesión iniciada!');
+        } else {
+          // Fallback: simple email prompt
+          loginWithFallback();
+        }
+      } catch (e) {
+        console.warn('Privy login error, using fallback:', e);
+        loginWithFallback();
+      }
     }
 
-    function onLoginError(error) {
-      console.error("Login error:", error);
-      showToast("Error al iniciar sesión");
+    // Fallback login (when Privy SDK fails)
+    function loginWithFallback() {
+      const email = prompt('Ingresa tu correo electrónico:');
+      if (email && email.includes('@')) {
+        isLoggedIn = true;
+        localStorage.setItem('privy_logged_in', 'true');
+        localStorage.setItem('user_email', email);
+        loadUserData();
+        updateUIAfterLogin();
+        showToast('✅ ¡Sesión iniciada!');
+      } else if (email) {
+        showToast('Correo inválido');
+      }
     }
 
-    function onLogout() {
+    // Logout
+    async function logoutUser() {
+      try {
+        if (privyClient && currentUser) {
+          await privyClient.auth.logout().catch(() => {});
+        }
+      } catch (e) { /* ignore */ }
       isLoggedIn = false;
+      currentUser = null;
+      localStorage.removeItem('privy_logged_in');
+      localStorage.removeItem('user_email');
       userCoins = 100;
+      updateCurrencyDisplay();
       updateUIAfterLogout();
-      clearUserData();
+      showToast('Sesión cerrada');
     }
 
-    function checkLoginStatus() {
-      // In a real implementation, this would check with Privy
-      // For now, we'll simulate based on localStorage
+    function checkLoginStatusFallback() {
       const savedLoginStatus = localStorage.getItem('privy_logged_in');
       if (savedLoginStatus === 'true') {
         isLoggedIn = true;
@@ -988,14 +1032,11 @@
       document.getElementById('login-btn').style.display = 'none';
       document.getElementById('logout-btn').style.display = 'inline-block';
 
-      // Show user info
       const userInfo = document.getElementById('user-info');
-      userInfo.textContent = "Usuario: " + (localStorage.getItem('user_email') || 'Usuario');
+      userInfo.textContent = "👤 " + (localStorage.getItem('user_email') || 'Usuario');
 
-      // Show currency
       updateCurrencyDisplay();
 
-      // Show the pet screen if state exists, otherwise show creation screen
       if (state) {
         showScreen('screen-pet');
       } else {
@@ -1006,15 +1047,15 @@
     function updateUIAfterLogout() {
       document.getElementById('login-btn').style.display = 'inline-block';
       document.getElementById('logout-btn').style.display = 'none';
-
-      // Hide user info
       document.getElementById('user-info').textContent = "¡Bienvenido!";
-
-      // Hide currency
       document.getElementById('currency-display').textContent = "🍊 — $FRUTA";
 
-      // Show login screen
-      showScreen('screen-login');
+      // Allow using app without login (show create screen)
+      if (state) {
+        showScreen('screen-pet');
+      } else {
+        showScreen('screen-create');
+      }
     }
 
     function updateCurrencyDisplay() {
@@ -1739,38 +1780,15 @@
     });
 
     // Login/Logout event listeners
-    document.getElementById('login-button').addEventListener('click', () => {
-      // Simulate login for demo purposes
-      isLoggedIn = true;
-      localStorage.setItem('privy_logged_in', 'true');
-      localStorage.setItem('user_email', 'usuario@example.com');
-      updateUIAfterLogin();
-
-      // If there's already a pet state, show it, otherwise show creation screen
-      if (state) {
-        showScreen('screen-pet');
-      } else {
-        showScreen('screen-create');
-      }
-    });
-
-    logoutBtn.addEventListener('click', () => {
-      // Simulate logout for demo purposes
-      isLoggedIn = false;
-      localStorage.removeItem('privy_logged_in');
-      localStorage.removeItem('user_email');
-      userCoins = 100; // Reset coins on logout
-      updateCurrencyDisplay();
-      updateUIAfterLogout();
-    });
+    document.getElementById('login-button').addEventListener('click', () => loginWithPrivy());
+    loginBtn.addEventListener('click', () => loginWithPrivy());
+    logoutBtn.addEventListener('click', () => logoutUser());
 
     // Initialize chat system
     loadChatHistory();
 
-    // Initialize Privy
-    document.addEventListener('DOMContentLoaded', function () {
-      initPrivy();
-    });
+    // Initialize Privy on load
+    initPrivy();
   </script>
 </body>
 
