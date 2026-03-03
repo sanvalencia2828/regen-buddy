@@ -291,6 +291,96 @@
       animation: celebrate 1s ease;
     }
 
+    @keyframes evolve-glow {
+      0% { transform: scale(0); opacity: 0; filter: brightness(3); }
+      50% { transform: scale(1.5); opacity: 1; filter: brightness(2); }
+      100% { transform: scale(1); opacity: 1; filter: brightness(1); }
+    }
+
+    @keyframes confetti {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(-200px) rotate(720deg); opacity: 0; }
+    }
+
+    .evolution-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 150;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .evolution-overlay.active {
+      display: flex;
+    }
+
+    .evolution-emoji {
+      font-size: 5rem;
+      animation: evolve-glow 1.5s ease forwards;
+    }
+
+    .evolution-text {
+      font-size: 1rem;
+      color: #92cc41;
+      text-shadow: 0 0 10px #92cc41;
+      text-align: center;
+    }
+
+    .evolution-stage {
+      font-size: 0.7rem;
+      color: #fff;
+    }
+
+    .confetti-particle {
+      position: absolute;
+      font-size: 1.5rem;
+      animation: confetti 2s ease-out forwards;
+      pointer-events: none;
+    }
+
+    .gallery-item {
+      background: #1a1a2e;
+      border: 2px solid #333;
+      padding: 8px;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .gallery-item img {
+      width: 60px;
+      height: 60px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    .gallery-score {
+      font-size: 0.6rem;
+      color: #92cc41;
+    }
+
+    .gallery-category {
+      font-size: 0.4rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #fff;
+    }
+
+    .gallery-category.personal { background: #209cee; }
+    .gallery-category.comunidad { background: #92cc41; }
+    .gallery-category.impacto { background: #f7d51d; }
+
+    .gallery-time {
+      font-size: 0.4rem;
+      color: #9b9b9b;
+    }
+
     .pet-type-badge {
       font-size: clamp(0.34rem, 1.8vw, 0.44rem);
       color: #9b9b9b;
@@ -787,6 +877,18 @@
           </div>
         </div>
 
+        <!-- Advanced Metrics -->
+        <div class="nes-container with-title" id="metrics-section">
+          <p class="title">📈 Métricas</p>
+          <div id="metrics-content" style="font-size: 0.5rem;">
+            <div style="font-size: 0.5rem; display: flex; flex-direction: column; gap: 8px;">
+              <div>Total entrenamientos: 0</div>
+              <div>Puntaje promedio: 0</div>
+              <div>🔥 Racha: 0 días</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Estadísticas -->
         <div class="nes-container with-title stats-section">
           <p class="title">Stats</p>
@@ -841,6 +943,12 @@
           <div id="action-history-list" style="max-height:180px;overflow-y:auto;"></div>
           <button id="btn-clear-history" type="button" class="nes-btn is-error btn-reset-sm"
             style="margin-top:8px;width:100%;">🗑 Limpiar</button>
+        </div>
+
+        <!-- Training Gallery -->
+        <div class="nes-container with-title" id="training-gallery-section">
+          <p class="title">🖼️ Galería de Entrenamientos</p>
+          <div id="training-gallery-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;"></div>
         </div>
 
         <!-- Info bar -->
@@ -955,6 +1063,15 @@
         <button id="modal-confirm" type="button" class="nes-btn is-error">Sí, reiniciar</button>
       </div>
     </div>
+  </div>
+
+  <!-- Evolution Overlay -->
+  <div id="evolution-overlay" class="evolution-overlay">
+    <div id="evolution-old-emoji" style="font-size: 4rem;"></div>
+    <div id="evolution-new-emoji" class="evolution-emoji"></div>
+    <div class="evolution-text">✨ ¡EVOLUCIÓN! ✨</div>
+    <div id="evolution-stage-name" class="evolution-stage"></div>
+    <div id="confetti-container"></div>
   </div>
 
   <!-- Toast de feedback -->
@@ -1074,6 +1191,14 @@
     const trainingCategory = document.getElementById('training-category');
     const trainingMessage = document.getElementById('training-message');
     const trainingStatus = document.getElementById('training-status');
+
+    const trainingGalleryGrid = document.getElementById('training-gallery-grid');
+
+    const evolutionOverlay = document.getElementById('evolution-overlay');
+    const evolutionOldEmoji = document.getElementById('evolution-old-emoji');
+    const evolutionNewEmoji = document.getElementById('evolution-new-emoji');
+    const evolutionStageName = document.getElementById('evolution-stage-name');
+    const confettiContainer = document.getElementById('confetti-container');
 
     let selectedTrainingImage = null;
 
@@ -1718,7 +1843,11 @@
             // Check for evolution
             const newStage = getEvolutionStage(state.type, state.trainingPoints);
             const evolved = newStage.index > previousStage.index;
+            const oldEmoji = previousStage.emoji;
 
+            // Create thumbnail and save to history
+            const thumbnail = await resizeImageToThumbnail(selectedTrainingImage, 100);
+            
             // Add coins after animation completes
             setTimeout(() => {
               userCoins += coinsEarned;
@@ -1758,7 +1887,7 @@
             // Show evolution toast if evolved
             if (evolved) {
               setTimeout(() => {
-                showToast(`🎉 ¡Tu Regenmon evolucionó a ${newStage.label}!`);
+                showEvolutionAnimation(oldEmoji, newStage.emoji, newStage.label);
               }, 1500);
             }
 
@@ -1767,10 +1896,15 @@
               score: data.score,
               category: data.category,
               message: data.message,
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              image: thumbnail
             });
             if (trainingHistory.length > 20) trainingHistory.pop();
             localStorage.setItem('regenmon_training_history', JSON.stringify(trainingHistory));
+
+            // Update gallery and metrics
+            renderTrainingGallery();
+            updateAdvancedMetrics();
 
             showSuccessMessage();
 
@@ -1795,6 +1929,171 @@
     modalTraining.addEventListener('click', (e) => {
       if (e.target === modalTraining) modalTraining.classList.remove('open');
     });
+
+    // ══════════════════════════════════════════════
+    //  TRAINING GALLERY
+    // ══════════════════════════════════════════════
+    function resizeImageToThumbnail(base64, maxWidth = 100) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ratio = maxWidth / img.width;
+          canvas.width = maxWidth;
+          canvas.height = img.height * ratio;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.7));
+        };
+        img.src = base64;
+      });
+    }
+
+    async function renderTrainingGallery() {
+      const history = JSON.parse(localStorage.getItem('regenmon_training_history') || '[]');
+      
+      if (history.length === 0) {
+        trainingGalleryGrid.innerHTML = '<div style="grid-column: span 2; text-align: center; color: #9b9b9b; font-size: 0.5rem; padding: 20px;">Aún no has entrenado 🏋️</div>';
+        return;
+      }
+
+      const displayHistory = history.slice(0, 10);
+      let html = '';
+      
+      displayHistory.forEach(item => {
+        const categoryClass = item.category.includes('Personal') ? 'personal' : item.category.includes('Comunidad') ? 'comunidad' : 'impacto';
+        const timeAgo = relativeTime(item.timestamp);
+        const thumbnail = item.image || '';
+        
+        html += `
+          <div class="gallery-item">
+            ${thumbnail ? `<img src="${thumbnail}" alt="Training" />` : '<div style="width:60px;height:60px;background:#333;border-radius:4px;display:flex;align-items:center;justify-content:center;">🏋️</div>'}
+            <div class="gallery-score">⭐ ${item.score}</div>
+            <div class="gallery-category ${categoryClass}">${item.category}</div>
+            <div class="gallery-time">${timeAgo}</div>
+          </div>
+        `;
+      });
+      
+      trainingGalleryGrid.innerHTML = html;
+    }
+
+    // ══════════════════════════════════════════════
+    //  EVOLUTION ANIMATION
+    // ══════════════════════════════════════════════
+    function showEvolutionAnimation(oldEmoji, newEmoji, stageName) {
+      return new Promise((resolve) => {
+        const meta = TYPE_META[state.type];
+        const prevStage = getEvolutionStage(state.type, state.trainingPoints - 1);
+        
+        evolutionOldEmoji.textContent = oldEmoji;
+        evolutionOldEmoji.style.display = 'block';
+        evolutionNewEmoji.style.display = 'none';
+        evolutionStageName.textContent = '';
+        
+        evolutionOverlay.classList.add('active');
+        
+        // Pulse old emoji then fade
+        setTimeout(() => {
+          evolutionOldEmoji.style.transition = 'opacity 0.5s, transform 0.5s';
+          evolutionOldEmoji.style.transform = 'scale(1.5)';
+          evolutionOldEmoji.style.opacity = '0';
+        }, 500);
+        
+        // Show new emoji
+        setTimeout(() => {
+          evolutionOldEmoji.style.display = 'none';
+          evolutionNewEmoji.textContent = newEmoji;
+          evolutionNewEmoji.style.display = 'block';
+          evolutionStageName.textContent = stageName;
+          
+          // Add confetti
+          confettiContainer.innerHTML = '';
+          for (let i = 0; i < 15; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'confetti-particle';
+            particle.textContent = '✨';
+            particle.style.left = Math.random() * 100 + 'vw';
+            particle.style.top = Math.random() * 50 + 50 + '%';
+            particle.style.animationDelay = Math.random() * 0.5 + 's';
+            confettiContainer.appendChild(particle);
+          }
+        }, 1200);
+        
+        // Auto dismiss
+        setTimeout(() => {
+          evolutionOverlay.classList.remove('active');
+          resolve();
+        }, 3000);
+      });
+    }
+
+    // Click to dismiss
+    evolutionOverlay.addEventListener('click', () => {
+      evolutionOverlay.classList.remove('active');
+    });
+
+    // ══════════════════════════════════════════════
+    //  ADVANCED METRICS
+    // ══════════════════════════════════════════════
+    function calculateStreak() {
+      const history = JSON.parse(localStorage.getItem('regenmon_training_history') || '[]');
+      if (history.length === 0) return 0;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Get unique days with trainings
+      const trainingDays = new Set();
+      history.forEach(item => {
+        const date = new Date(item.timestamp);
+        date.setHours(0, 0, 0, 0);
+        trainingDays.add(date.getTime());
+      });
+      
+      const sortedDays = Array.from(trainingDays).sort((a, b) => b - a);
+      
+      // Check if most recent training is today or yesterday
+      const mostRecent = new Date(sortedDays[0]);
+      mostRecent.setHours(0, 0, 0, 0);
+      const daysDiff = Math.floor((today - mostRecent) / (1000 * 60 * 60 * 24));
+      
+      if (daysDiff > 1) return 0;
+      
+      // Count consecutive days
+      let streak = 1;
+      for (let i = 1; i < sortedDays.length; i++) {
+        const diff = sortedDays[i - 1] - sortedDays[i];
+        if (diff === 1000 * 60 * 60 * 24) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+      
+      return streak;
+    }
+
+    function updateAdvancedMetrics() {
+      const history = JSON.parse(localStorage.getItem('regenmon_training_history') || '[]');
+      
+      const totalTrainings = history.length;
+      const averageScore = totalTrainings > 0 
+        ? (history.reduce((sum, item) => sum + item.score, 0) / totalTrainings).toFixed(1)
+        : 0;
+      const streak = calculateStreak();
+      
+      const metricsContent = document.getElementById('metrics-content');
+      if (metricsContent) {
+        metricsContent.innerHTML = `
+          <div style="font-size: 0.5rem; display: flex; flex-direction: column; gap: 8px;">
+            <div>Total entrenamientos: ${totalTrainings}</div>
+            <div>Puntaje promedio: ${averageScore}</div>
+            <div>🔥 Racha: ${streak} días</div>
+          </div>
+        `;
+      }
+    }
 
     // Auto-update age display every minute
     setInterval(() => { if (state) displayAge.textContent = getAge(state.createdAt); }, 60000);
@@ -2218,6 +2517,9 @@
       if (state) {
         renderPet();
       }
+      // Initialize gallery and metrics
+      renderTrainingGallery();
+      updateAdvancedMetrics();
       // Check login status
       if (localStorage.getItem('privy_logged_in') === 'true') {
         isLoggedIn = true;
