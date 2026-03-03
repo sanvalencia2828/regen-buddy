@@ -766,6 +766,17 @@
           <span class="pet-type-badge" id="display-type"></span>
         </div>
 
+        <!-- Progreso -->
+        <div class="nes-container with-title" id="progress-section">
+          <p class="title">📊 Progreso</p>
+          <div id="progress-content" style="font-size: 0.5rem;">
+            <div id="progress-stage" style="margin-bottom: 8px;"></div>
+            <div id="progress-points" style="margin-bottom: 4px;"></div>
+            <progress id="progress-bar" class="nes-progress is-primary" value="0" max="100"></progress>
+            <div id="progress-status" style="margin-top: 4px; color: #92cc41;"></div>
+          </div>
+        </div>
+
         <!-- Estadísticas -->
         <div class="nes-container with-title stats-section">
           <p class="title">Stats</p>
@@ -948,10 +959,48 @@
     let currentUser = null;
 
     const TYPE_META = {
-      seed: { emoji: '🌱', label: 'Semilla · Tierra', cls: 'type-seed' },
-      drop: { emoji: '💧', label: 'Gota · Agua', cls: 'type-drop' },
-      spark: { emoji: '✨', label: 'Chispa · Fuego', cls: 'type-spark' },
+      seed: {
+        stages: [
+          { emoji: '🌱', label: 'Semilla Bebé' },
+          { emoji: '🌿', label: 'Semilla Joven' },
+          { emoji: '🌳', label: 'Semilla Adulta' }
+        ],
+        label: 'Semilla · Tierra',
+        cls: 'type-seed'
+      },
+      drop: {
+        stages: [
+          { emoji: '💧', label: 'Gota Bebé' },
+          { emoji: '🌊', label: 'Gota Joven' },
+          { emoji: '🌀', label: 'Gota Adulta' }
+        ],
+        label: 'Gota · Agua',
+        cls: 'type-drop'
+      },
+      spark: {
+        stages: [
+          { emoji: '✨', label: 'Chispa Bebé' },
+          { emoji: '⚡', label: 'Chispa Joven' },
+          { emoji: '🔥', label: 'Chispa Adulta' }
+        ],
+        label: 'Chispa · Fuego',
+        cls: 'type-spark'
+      },
     };
+
+    function getEvolutionStage(type, points) {
+      const meta = TYPE_META[type];
+      if (!meta) return { index: 0, emoji: '🌱', label: 'Bebé', threshold: 100 };
+      if (points >= 300) return { index: 2, emoji: meta.stages[2].emoji, label: meta.stages[2].label.split(' ')[1], threshold: 300 };
+      if (points >= 100) return { index: 1, emoji: meta.stages[1].emoji, label: meta.stages[1].label.split(' ')[1], threshold: 300 };
+      return { index: 0, emoji: meta.stages[0].emoji, label: 'Bebé', threshold: 100 };
+    }
+
+    function getNextThreshold(points) {
+      if (points >= 300) return null;
+      if (points >= 100) return 300;
+      return 100;
+    }
 
     let state = null;
 
@@ -974,6 +1023,11 @@
     const displayType = document.getElementById('display-type');
     const petCard = document.getElementById('pet-card');
     const displayAge = document.getElementById('display-age');
+
+    const progressStage = document.getElementById('progress-stage');
+    const progressPoints = document.getElementById('progress-points');
+    const progressBar = document.getElementById('progress-bar');
+    const progressStatus = document.getElementById('progress-status');
 
     const barHappiness = document.getElementById('bar-happiness');
     const barEnergy = document.getElementById('bar-energy');
@@ -1330,10 +1384,39 @@
     // Render pet screen
     function renderPet() {
       const meta = TYPE_META[state.type];
+      const trainingPoints = state.trainingPoints || 0;
+      const evolution = getEvolutionStage(state.type, trainingPoints);
+      
       displayName.textContent = state.name;
-      displayEmoji.textContent = meta.emoji;
-      displayType.textContent = meta.label;
+      displayEmoji.textContent = evolution.emoji;
+      displayType.textContent = `${evolution.label}`;
       petCard.className = `pet-card nes-container ${meta.cls}`;
+      
+      // Update emoji size based on stage
+      if (evolution.index === 2) {
+        displayEmoji.style.fontSize = 'clamp(5rem, 26vw, 7rem)';
+      } else if (evolution.index === 1) {
+        displayEmoji.style.fontSize = 'clamp(4rem, 22vw, 6rem)';
+      } else {
+        displayEmoji.style.fontSize = 'clamp(3rem, 18vw, 5rem)';
+      }
+      
+      // Update progress bar
+      const nextThreshold = getNextThreshold(trainingPoints);
+      if (nextThreshold === null) {
+        progressStage.textContent = `${evolution.emoji} ${evolution.label}`;
+        progressPoints.textContent = `Puntos: ${trainingPoints} / MAX`;
+        progressBar.value = 100;
+        progressStatus.textContent = '¡Etapa máxima alcanzada! 🏆';
+      } else {
+        const prevThreshold = evolution.index === 0 ? 0 : evolution.index === 1 ? 100 : 300;
+        const progress = ((trainingPoints - prevThreshold) / (nextThreshold - prevThreshold)) * 100;
+        progressStage.textContent = `${evolution.emoji} ${evolution.label}`;
+        progressPoints.textContent = `Puntos: ${trainingPoints} / ${nextThreshold}`;
+        progressBar.value = progress;
+        progressStatus.textContent = '';
+      }
+      
       updateBar(barHappiness, valHappiness, state.stats.happiness);
       updateBar(barEnergy, valEnergy, state.stats.energy);
       updateBar(barHunger, valHunger, state.stats.hunger);
@@ -1439,6 +1522,7 @@
         type: selectedType,
         createdAt: Date.now(),
         stats: { happiness: 50, energy: 50, hunger: 50 },
+        trainingPoints: 0,
       };
       saveState();
       renderPet();
@@ -1581,6 +1665,24 @@
         trainingForm.style.display = 'none';
         trainingResult.style.display = 'block';
 
+        // Calculate rewards
+        const coinsEarned = Math.floor(data.score / 10);
+        const previousStage = getEvolutionStage(state.type, state.trainingPoints || 0);
+        
+        // Add training points
+        if (!state.trainingPoints) state.trainingPoints = 0;
+        state.trainingPoints += data.score;
+        
+        // Check for evolution
+        const newStage = getEvolutionStage(state.type, state.trainingPoints);
+        const evolved = newStage.index > previousStage.index;
+
+        // Add coins
+        userCoins += coinsEarned;
+        showCoinAnimation(coinsEarned);
+        updateCurrencyDisplay();
+        if (typeof saveUserData === 'function') saveUserData();
+
         const originalHappiness = state.stats.happiness;
         const originalEnergy = state.stats.energy;
         const originalHunger = state.stats.hunger;
@@ -1601,7 +1703,14 @@
 
         saveState();
         renderPet();
-        addActionHistory('🏋️ Entrenar', 0);
+        addActionHistory('🏋️ Entrenar', coinsEarned);
+
+        // Show evolution toast if evolved
+        if (evolved) {
+          setTimeout(() => {
+            showToast(`🎉 ¡Tu Regenmon evolucionó a ${newStage.label}!`);
+          }, 1500);
+        }
 
         const trainingHistory = JSON.parse(localStorage.getItem('regenmon_training_history') || '[]');
         trainingHistory.unshift({
