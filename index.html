@@ -2599,6 +2599,7 @@
 
     // Handle sending a message
     async function sendMessage() {
+      try {
       const message = chatInput.value.trim();
       if (!message) return;
 
@@ -2695,6 +2696,7 @@
         addMessageToUI(errorMessage, 'regenmon', errorTimestamp);
         saveChatHistory();
       }
+      } catch(err) { console.error('sendMessage error:', err); showToast('Error: ' + err.message); }
     }
 
     // Event listeners for chat
