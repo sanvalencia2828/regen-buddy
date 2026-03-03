@@ -570,6 +570,16 @@
       }
     }
 
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+      }
+
+      to {
+        opacity: 0;
+      }
+    }
+
     .message-user {
       align-self: flex-end;
       background: #209cee;
@@ -792,6 +802,16 @@
 <body>
 
   <div id="app">
+    <!-- Visitor Mode Banner -->
+    <div id="visitor-banner" class="nes-container" style="display: none; background: #1a2e1a; border: 2px solid #209cee; margin-bottom: 12px;">
+      <p style="font-size: 0.5rem; color: #209cee; text-align: center; margin: 0 0 8px;">
+        👀 Modo Visita — Estás viendo el Regenmon de <span id="visitor-owner-name"></span>
+      </p>
+      <button id="btn-create-my-regenmon" type="button" class="nes-btn is-primary" style="width: 100%; font-size: 0.5rem;">
+        🏠 Crear mi Regenmon
+      </button>
+    </div>
+
     <!-- Header with user info and currency -->
     <div class="header">
       <div id="user-info" class="user-info">¡Bienvenido!</div>
@@ -955,6 +975,12 @@
         <div class="nes-container">
           <div class="info-bar">
             <span id="display-age" class="age-display"></span>
+            <span id="visit-stats" style="font-size: 0.4rem; color: #9b9b9b; display: none;">
+              👀 <span id="visit-count">0</span> visitas · 👋 <span id="greet-count">0</span> saludos
+            </span>
+            <button id="btn-public-toggle" type="button" class="nes-btn is-warning btn-reset-sm" style="display: none;">
+              🌐 Hacer Público
+            </button>
             <button id="btn-reset" type="button" class="nes-btn is-error btn-reset-sm">
               🗑 Reiniciar
             </button>
@@ -1053,8 +1079,55 @@
               <div id="hub-activity-list" style="max-height: 120px; overflow-y: auto; font-size: 0.4rem;"></div>
             </div>
           </div>
+
+          <!-- Explore Button -->
+          <button id="btn-explore" type="button" class="nes-btn" style="width: 100%; margin-top: 12px; font-size: 0.5rem;">
+            🌍 Explorar
+          </button>
+
         </div>
 
+      </section>
+
+  <!-- ════════════════════════════════════════
+        VISITOR PROFILE MODAL
+  ════════════════════════════════════════ -->
+  <div id="modal-visitor" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-box nes-container">
+      <p class="modal-title">👀 Visitando</p>
+      <div id="visitor-profile-content" style="text-align: center;">
+        <div style="background: #1a1a2e; padding: 16px; border-radius: 4px; margin-bottom: 12px;">
+          <img id="visitor-sprite" style="width: 80px; height: 80px; margin-bottom: 8px;" />
+          <div id="visitor-name" style="font-size: 0.7rem; color: #fff;"></div>
+          <div id="visitor-type" style="font-size: 0.5rem; color: #9b9b9b;"></div>
+          <div id="visitor-stage" class="nes-badge" style="margin-top: 8px;"></div>
+        </div>
+        <div id="visitor-stats" style="text-align: left; margin-bottom: 12px;"></div>
+        <button id="btn-greet" type="button" class="nes-btn is-success" style="width: 100%; margin-bottom: 8px;">
+          👋 Saludar
+        </button>
+      </div>
+      <div class="modal-actions" style="margin-top: 12px;">
+        <button id="visitor-close" type="button" class="nes-btn" style="width: 100%;">← Volver</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+         SOCIAL EXPLORE SCREEN
+      ════════════════════════════════════════ -->
+      <section id="screen-social" class="screen nes-container with-title">
+        <p class="title">🌍 Explorar</p>
+        
+        <div id="explore-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px;">
+          <div style="text-align: center; color: #9b9b9b; grid-column: span 2; padding: 20px;">
+            Cargando mascotas...
+          </div>
+        </div>
+
+        <button id="btn-back-to-pet" type="button" class="nes-btn" style="width: 100%; margin-top: 12px;">
+          ← Volver
+        </button>
       </section>
     </div><!-- /.container -->
   </div><!-- /#app -->
@@ -3153,6 +3226,311 @@
       const { isRegistered } = isHubRegistered();
       if (isRegistered) syncWithHub();
     }, 5 * 60 * 1000);
+
+    // ══════════════════════════════════════════════
+    //  PUBLIC PROFILE & VISITOR MODE
+    // ══════════════════════════════════════════════
+    const btnPublicToggle = document.getElementById('btn-public-toggle');
+    const visitStats = document.getElementById('visit-stats');
+    const visitCount = document.getElementById('visit-count');
+    const greetCount = document.getElementById('greet-count');
+    const visitorBanner = document.getElementById('visitor-banner');
+    const visitorOwnerName = document.getElementById('visitor-owner-name');
+    const btnCreateMyRegenmon = document.getElementById('btn-create-my-regenmon');
+    const modalVisitor = document.getElementById('modal-visitor');
+    const visitorSprite = document.getElementById('visitor-sprite');
+    const visitorName = document.getElementById('visitor-name');
+    const visitorType = document.getElementById('visitor-type');
+    const visitorStage = document.getElementById('visitor-stage');
+    const visitorStats = document.getElementById('visitor-stats');
+    const btnGreet = document.getElementById('btn-greet');
+    const visitorClose = document.getElementById('visitor-close');
+    const btnExplore = document.getElementById('btn-explore');
+    const screenSocial = document.getElementById('screen-social');
+    const exploreGrid = document.getElementById('explore-grid');
+    const btnBackToPet = document.getElementById('btn-back-to-pet');
+
+    let currentVisitorPet = null;
+
+    // Check URL for visit parameter
+    function checkVisitorMode() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const visitId = urlParams.get('visit');
+      
+      if (visitId) {
+        // Find pet by publicId (simulated - in real app would fetch from server)
+        const savedState = JSON.parse(localStorage.getItem('regenmon_state') || '{}');
+        if (savedState.publicId === visitId) {
+          enterVisitorMode(savedState);
+        } else {
+          // Try to find in localStorage by any publicId
+          const publicPets = JSON.parse(localStorage.getItem('regenmon_public_pets') || '[]');
+          const pet = publicPets.find(p => p.publicId === visitId);
+          if (pet) {
+            enterVisitorMode(pet);
+          } else {
+            showToast('Regenmon no encontrado');
+          }
+        }
+      }
+    }
+
+    function enterVisitorMode(pet) {
+      // Hide normal UI
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      visitorBanner.style.display = 'block';
+      visitorOwnerName.textContent = pet.ownerName || 'Dueño';
+      
+      // Show pet info in visitor mode
+      const evolution = getEvolutionStage(pet.type, pet.trainingPoints || 0);
+      currentVisitorPet = pet;
+      
+      // Increment visits
+      const visitKey = `regenmon_visits_${pet.publicId}`;
+      const visits = (parseInt(localStorage.getItem(visitKey) || '0')) + 1;
+      localStorage.setItem(visitKey, visits.toString());
+      
+      // Show visitor modal with pet info
+      showVisitorProfile(pet);
+    }
+
+    function showVisitorProfile(pet) {
+      const evolution = getEvolutionStage(pet.type, pet.trainingPoints || 0);
+      const typeLabel = pet.type === 'seed' ? 'Semilla' : pet.type === 'drop' ? 'Gota' : 'Chispa';
+      
+      visitorSprite.src = getSpriteUrl(evolution.emoji);
+      visitorName.textContent = pet.name;
+      visitorType.textContent = `${typeLabel} · ${pet.ownerName || 'Dueño'}`;
+      visitorStage.innerHTML = `<span class="is-primary">${evolution.label}</span>`;
+      
+      const stats = pet.stats || { happiness: 50, energy: 50, hunger: 50 };
+      visitorStats.innerHTML = `
+        <div style="margin-bottom: 6px;">
+          <div style="font-size: 0.45rem;">😊 Felicidad: ${stats.happiness}</div>
+          <progress class="nes-progress is-success" value="${stats.happiness}" max="100" style="width:100%;"></progress>
+        </div>
+        <div style="margin-bottom: 6px;">
+          <div style="font-size: 0.45rem;">⚡ Energía: ${stats.energy}</div>
+          <progress class="nes-progress is-warning" value="${stats.energy}" max="100" style="width:100%;"></progress>
+        </div>
+        <div style="margin-bottom: 6px;">
+          <div style="font-size: 0.45rem;">🍖 Hambre: ${stats.hunger}</div>
+          <progress class="nes-progress is-error" value="${stats.hunger}" max="100" style="width:100%;"></progress>
+        </div>
+      `;
+      
+      modalVisitor.classList.add('open');
+    }
+
+    function exitVisitorMode() {
+      visitorBanner.style.display = 'none';
+      if (state) {
+        showScreen('screen-pet');
+      } else {
+        showScreen('screen-create');
+      }
+      modalVisitor.classList.remove('open');
+      
+      // Clear URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    // Public toggle
+    function updatePublicUI() {
+      if (!state) {
+        btnPublicToggle.style.display = 'none';
+        return;
+      }
+      
+      btnPublicToggle.style.display = 'inline-block';
+      
+      if (state.isPublic) {
+        btnPublicToggle.textContent = '🔒 Hacer Privado';
+        visitStats.style.display = 'inline';
+        
+        const visitKey = `regenmon_visits_${state.publicId}`;
+        const greetKey = `regenmon_greetings_${state.publicId}`;
+        visitCount.textContent = localStorage.getItem(visitKey) || '0';
+        greetCount.textContent = localStorage.getItem(greetKey) || '0';
+      } else {
+        btnPublicToggle.textContent = '🌐 Hacer Público';
+        visitStats.style.display = 'none';
+      }
+    }
+
+    async function togglePublic() {
+      if (!state) return;
+      
+      if (!state.isPublic) {
+        // Make public
+        state.isPublic = true;
+        state.publicId = state.publicId || crypto.randomUUID().slice(0, 8);
+        state.ownerName = localStorage.getItem('user_email') || 'Dueño';
+        
+        // Save to public pets list
+        const publicPets = JSON.parse(localStorage.getItem('regenmon_public_pets') || '[]');
+        const existingIndex = publicPets.findIndex(p => p.publicId === state.publicId);
+        const petData = { ...state };
+        if (existingIndex >= 0) {
+          publicPets[existingIndex] = petData;
+        } else {
+          publicPets.push(petData);
+        }
+        localStorage.setItem('regenmon_public_pets', JSON.stringify(publicPets));
+        
+        saveState();
+        updatePublicUI();
+        
+        // Show share URL
+        const shareUrl = `${window.location.origin}?visit=${state.publicId}`;
+        showToast(`🌐 ¡Tu Regenmon es público! URL copiada`);
+        
+        // Copy to clipboard
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+        } catch (e) {
+          console.log('Could not copy to clipboard');
+        }
+      } else {
+        // Make private
+        state.isPublic = false;
+        
+        // Remove from public pets
+        const publicPets = JSON.parse(localStorage.getItem('regenmon_public_pets') || '[]');
+        const filtered = publicPets.filter(p => p.publicId !== state.publicId);
+        localStorage.setItem('regenmon_public_pets', JSON.stringify(filtered));
+        
+        saveState();
+        updatePublicUI();
+        showToast('🔒 Tu Regenmon ahora es privado');
+      }
+    }
+
+    // ══════════════════════════════════════════════
+    //  EXPLORE / DISCOVERY FEED
+    // ══════════════════════════════════════════════
+    async function loadExplorePets() {
+      exploreGrid.innerHTML = '<div style="text-align: center; color: #9b9b9b; grid-column: span 2; padding: 20px;">Cargando...</div>';
+      
+      try {
+        const response = await hubFetch(`${HUB_API}/pets`);
+        
+        if (response.data?.length > 0) {
+          renderExploreGrid(response.data);
+        } else {
+          // Fallback to simulated pets
+          renderExploreGrid(generateSimulatedPets());
+        }
+      } catch (error) {
+        // Fallback to simulated pets
+        renderExploreGrid(generateSimulatedPets());
+      }
+    }
+
+    function generateSimulatedPets() {
+      const names = ['Luna', 'Sol', 'Rayo', 'Nube', 'Estrella'];
+      const types = ['seed', 'drop', 'spark'];
+      return names.map((name, i) => ({
+        id: `sim_${i}`,
+        name: name,
+        type: types[i % 3],
+        ownerName: 'Entrenador ' + (i + 1),
+        stats: {
+          happiness: Math.floor(Math.random() * 50) + 30,
+          energy: Math.floor(Math.random() * 50) + 30,
+          hunger: Math.floor(Math.random() * 50) + 30
+        },
+        trainingPoints: Math.floor(Math.random() * 200)
+      }));
+    }
+
+    function renderExploreGrid(pets) {
+      let html = '';
+      
+      pets.forEach(pet => {
+        const evolution = getEvolutionStage(pet.type, pet.trainingPoints || 0);
+        const typeLabel = pet.type === 'seed' ? 'Semilla' : pet.type === 'drop' ? 'Gota' : 'Chispa';
+        
+        html += `
+          <div class="explore-card nes-container" data-id="${pet.publicId || pet.id}" data-name="${pet.name}" data-type="${pet.type}" data-owner="${pet.ownerName}" data-points="${pet.trainingPoints || 0}" data-stats='${JSON.stringify(pet.stats || {happiness:50,energy:50,hunger:50})}' style="background: #1a1a2e; padding: 12px; border-radius: 4px; cursor: pointer; text-align: center;">
+            <img src="${getSpriteUrl(evolution.emoji)}" style="width: 48px; height: 48px; margin-bottom: 4px;" />
+            <div style="font-size: 0.6rem; color: #fff;">${pet.name}</div>
+            <div style="font-size: 0.4rem; color: #9b9b9b;">${typeLabel}</div>
+            <div style="font-size: 0.35rem; color: #92cc41;">${evolution.label}</div>
+          </div>
+        `;
+      });
+      
+      exploreGrid.innerHTML = html;
+      
+      // Add click handlers
+      document.querySelectorAll('.explore-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const petData = {
+            name: card.dataset.name,
+            type: card.dataset.type,
+            ownerName: card.dataset.owner,
+            trainingPoints: parseInt(card.dataset.points),
+            stats: JSON.parse(card.dataset.stats),
+            publicId: card.dataset.id
+          };
+          showVisitorProfile(petData);
+          screenSocial.classList.remove('active');
+        });
+      });
+    }
+
+    // ══════════════════════════════════════════════
+    //  GREETING INTERACTION
+    // ══════════════════════════════════════════════
+    function greetPet() {
+      if (!currentVisitorPet) return;
+      
+      const petName = currentVisitorPet.name;
+      showToast(`👋 ¡Saludaste a ${petName}!`);
+      
+      // Random response
+      const responses = ['¡Hola! 🎉', '¡Qué alegría verte! 😊', '¡Bienvenido! 🌟', '¡Gracias por visitarme! 💚', '¡Regenmón feliz! 🐣'];
+      const response = responses[Math.floor(Math.random() * responses.length)];
+      
+      // Show speech bubble
+      const bubble = document.createElement('div');
+      bubble.id = 'greet-bubble';
+      bubble.style.cssText = 'position: absolute; background: #92cc41; color: #000; padding: 8px 12px; border-radius: 8px; font-size: 0.5rem; top: 20%; left: 50%; transform: translateX(-50%); z-index: 200; animation: fadeIn 0.3s ease;';
+      bubble.textContent = response;
+      document.body.appendChild(bubble);
+      
+      // Remove after 3 seconds
+      setTimeout(() => {
+        bubble.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => bubble.remove(), 300);
+      }, 3000);
+      
+      // Increment greetings counter
+      const greetKey = `regenmon_greetings_${currentVisitorPet.publicId}`;
+      const greets = (parseInt(localStorage.getItem(greetKey) || '0')) + 1;
+      localStorage.setItem(greetKey, greets.toString());
+    }
+
+    // Event listeners
+    btnPublicToggle?.addEventListener('click', togglePublic);
+    btnCreateMyRegenmon?.addEventListener('click', exitVisitorMode);
+    visitorClose?.addEventListener('click', exitVisitorMode);
+    modalVisitor?.addEventListener('click', e => { if (e.target === modalVisitor) exitVisitorMode(); });
+    btnGreet?.addEventListener('click', greetPet);
+    
+    btnExplore?.addEventListener('click', () => {
+      showScreen('screen-social');
+      loadExplorePets();
+    });
+    
+    btnBackToPet?.addEventListener('click', () => {
+      showScreen('screen-pet');
+    });
+
+    // Check visitor mode on load
+    checkVisitorMode();
+    updatePublicUI();
 
     // Initialize Hub UI
     updateHubUI();
