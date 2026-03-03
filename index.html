@@ -302,6 +302,74 @@
       100% { transform: translateY(-200px) rotate(720deg); opacity: 0; }
     }
 
+    @keyframes confetti-float {
+      0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+      100% { opacity: 0; transform: translateY(-150px) rotate(720deg); }
+    }
+
+    @keyframes visit-glow {
+      0% { filter: brightness(1); }
+      50% { filter: brightness(1.5) drop-shadow(0 0 10px #92cc41); }
+      100% { filter: brightness(1); }
+    }
+
+    .pet-emoji.visit-glow {
+      animation: visit-glow 2s ease;
+    }
+
+    .gift-confetti {
+      position: fixed;
+      font-size: 1.5rem;
+      z-index: 200;
+      pointer-events: none;
+      animation: confetti-float 2s ease-out forwards;
+    }
+
+    .notification-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #e76e55;
+      color: white;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      font-size: 0.35rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .notification-dropdown {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      background: #1a1a2e;
+      border: 2px solid #444;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 100;
+      width: 250px;
+      padding: 8px;
+    }
+
+    .notification-dropdown.open {
+      display: block;
+    }
+
+    .notification-item {
+      font-size: 0.4rem;
+      padding: 6px;
+      border-bottom: 1px solid #333;
+      color: #9b9b9b;
+    }
+
+    .notification-item:last-child {
+      border-bottom: none;
+    }
+
     .evolution-overlay {
       display: none;
       position: fixed;
@@ -815,7 +883,17 @@
     <!-- Header with user info and currency -->
     <div class="header">
       <div id="user-info" class="user-info">¡Bienvenido!</div>
-      <div id="currency-display" class="currency-display">🍊 — $FRUTA</div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div id="notification-bell" style="position: relative; cursor: pointer;">
+          <span style="font-size: 1.2rem;">🔔</span>
+          <div id="notification-badge" class="notification-badge" style="display: none;">0</div>
+          <div id="notification-dropdown" class="notification-dropdown">
+            <div style="font-size: 0.45rem; color: #9b9b9b; padding-bottom: 8px; border-bottom: 1px solid #333; margin-bottom: 4px;">Notificaciones</div>
+            <div id="notification-list"></div>
+          </div>
+        </div>
+        <div id="currency-display" class="currency-display">🍊 — $FRUTA</div>
+      </div>
       <button id="faucet-btn" class="nes-btn is-warning login-btn" style="display: none;">🍊 Conseguir monedas</button>
       <button id="login-btn" class="nes-btn is-primary login-btn">Iniciar Sesión</button>
       <button id="logout-btn" class="nes-btn is-error logout-btn" style="display: none;">Cerrar Sesión</button>
@@ -987,6 +1065,21 @@
           </div>
         </div>
 
+        <!-- Social Metrics Summary -->
+        <div id="social-metrics" class="nes-container" style="display: none;">
+          <p class="title" style="font-size: 0.5rem;">📊 Resumen Social</p>
+          <div id="social-metrics-content" style="font-size: 0.45rem; display: flex; flex-direction: column; gap: 6px; color: #9b9b9b;">
+            <div>👀 <span id="total-visits">0</span> visitas totales</div>
+            <div>🎁 <span id="total-gifts">0</span> regalos recibidos</div>
+            <div>👋 <span id="total-greets">0</span> saludos recibidos</div>
+            <div>🌐 Público desde: <span id="public-since">-</span></div>
+          </div>
+          <div style="margin-top: 8px;">
+            <label style="font-size: 0.4rem; color: #9b9b9b;">✉️ Mensaje de bienvenida:</label>
+            <input id="welcome-message-input" type="text" class="nes-input" placeholder="¡Bienvenido a mi Regenmon!" maxlength="50" style="font-size: 0.4rem; margin-top: 4px;" />
+          </div>
+        </div>
+
         <!-- Chat Section -->
         <div class="nes-container with-title chat-section" style="position: relative;">
           <p class="title">💬 Chat</p>
@@ -1118,6 +1211,12 @@
       ════════════════════════════════════════ -->
       <section id="screen-social" class="screen nes-container with-title">
         <p class="title">🌍 Explorar</p>
+        
+        <!-- Ranking Section -->
+        <div id="ranking-section" style="margin-bottom: 16px; padding: 8px; background: #1a1a2e; border-radius: 4px;">
+          <p style="font-size: 0.5rem; color: #f7d51d; margin: 0 0 8px;">🏆 Top 5 Regenmons</p>
+          <div id="ranking-list" style="font-size: 0.5rem;"></div>
+        </div>
         
         <div id="explore-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px;">
           <div style="text-align: center; color: #9b9b9b; grid-column: span 2; padding: 20px;">
@@ -3528,9 +3627,290 @@
       showScreen('screen-pet');
     });
 
+    // ══════════════════════════════════════════════
+    //  NOTIFICATIONS SYSTEM
+    // ══════════════════════════════════════════════
+    const notificationBell = document.getElementById('notification-bell');
+    const notificationBadge = document.getElementById('notification-badge');
+    const notificationDropdown = document.getElementById('notification-dropdown');
+    const notificationList = document.getElementById('notification-list');
+
+    const NOTIFICATIONS_KEY = 'regenmon_notifications';
+
+    function getNotifications() {
+      return JSON.parse(localStorage.getItem(NOTIFICATIONS_KEY) || '[]');
+    }
+
+    function saveNotifications(notifs) {
+      localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifs));
+    }
+
+    function addNotification(type, message) {
+      const notifs = getNotifications();
+      notifs.unshift({
+        type,
+        message,
+        timestamp: Date.now(),
+        read: false
+      });
+      // Keep only last 50
+      if (notifs.length > 50) notifs.pop();
+      saveNotifications(notifs);
+      updateNotificationBadge();
+    }
+
+    function getUnreadCount() {
+      return getNotifications().filter(n => !n.read).length;
+    }
+
+    function updateNotificationBadge() {
+      const count = getUnreadCount();
+      if (count > 0) {
+        notificationBadge.style.display = 'flex';
+        notificationBadge.textContent = count > 9 ? '9+' : count;
+      } else {
+        notificationBadge.style.display = 'none';
+      }
+    }
+
+    function renderNotifications() {
+      const notifs = getNotifications().slice(0, 10);
+      if (notifs.length === 0) {
+        notificationList.innerHTML = '<div style="font-size: 0.4rem; color: #9b9b9b; text-align: center; padding: 8px;">Sin notificaciones</div>';
+        return;
+      }
+      
+      let html = '';
+      notifs.forEach(n => {
+        html += `
+          <div class="notification-item" style="${n.read ? 'opacity: 0.5;' : ''}">
+            <div>${n.message}</div>
+            <div style="font-size: 0.35rem; color: #666; margin-top: 2px;">${formatRelativeTime(n.timestamp)}</div>
+          </div>
+        `;
+      });
+      notificationList.innerHTML = html;
+    }
+
+    function markAllRead() {
+      const notifs = getNotifications().map(n => ({ ...n, read: true }));
+      saveNotifications(notifs);
+      updateNotificationBadge();
+    }
+
+    notificationBell?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      notificationDropdown.classList.toggle('open');
+      renderNotifications();
+    });
+
+    document.addEventListener('click', () => {
+      notificationDropdown.classList.remove('open');
+    });
+
+    notificationDropdown?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      markAllRead();
+    });
+
+    // ══════════════════════════════════════════════
+    //  CONFETTI & GLOW ANIMATIONS
+    // ══════════════════════════════════════════════
+    function showGiftConfetti() {
+      const emojis = ['✨', '🎁', '💝', '🌟', '💚'];
+      for (let i = 0; i < 15; i++) {
+        const confetti = document.createElement('span');
+        confetti.className = 'gift-confetti';
+        confetti.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        confetti.style.left = (10 + Math.random() * 80) + '%';
+        confetti.style.top = '50%';
+        confetti.style.animationDelay = (Math.random() * 0.5) + 's';
+        document.body.appendChild(confetti);
+        setTimeout(() => confetti.remove(), 2500);
+      }
+    }
+
+    function showVisitGlow() {
+      const petEmoji = document.getElementById('display-emoji');
+      if (petEmoji) {
+        petEmoji.classList.add('visit-glow');
+        setTimeout(() => petEmoji.classList.remove('visit-glow'), 2000);
+      }
+    }
+
+    // ══════════════════════════════════════════════
+    //  RANKING
+    // ══════════════════════════════════════════════
+    const rankingList = document.getElementById('ranking-list');
+
+    function renderRanking(pets) {
+      // Sort by visits or happiness as proxy
+      const sorted = [...pets].sort((a, b) => {
+        const visitsA = parseInt(localStorage.getItem(`regenmon_visits_${a.publicId || a.id}`) || '0');
+        const visitsB = parseInt(localStorage.getItem(`regenmon_visits_${b.publicId || b.id}`) || '0');
+        return visitsB - visitsA;
+      }).slice(0, 5);
+
+      if (sorted.length === 0) {
+        rankingList.innerHTML = '<div style="color: #9b9b9b;">Sin datos disponibles</div>';
+        return;
+      }
+
+      let html = '';
+      sorted.forEach((pet, idx) => {
+        const rank = idx + 1;
+        let color = '#9b9b9b';
+        if (rank === 1) color = '#f7d51d';
+        else if (rank === 2) color = '#c0c0c0';
+        else if (rank === 3) color = '#cd7f32';
+        
+        const emoji = pet.type === 'seed' ? '🌱' : pet.type === 'drop' ? '💧' : '✨';
+        html += `<div style="color: ${color}; padding: 2px 0;">${rank}. ${emoji} ${pet.name} — ⭐ ${pet.totalPoints || 0} pts</div>`;
+      });
+      rankingList.innerHTML = html;
+    }
+
+    // Update loadExplorePets to include ranking
+    const originalLoadExplorePets = loadExplorePets;
+    loadExplorePets = async function() {
+      exploreGrid.innerHTML = '<div style="text-align: center; color: #9b9b9b; grid-column: span 2; padding: 20px;">Cargando...</div>';
+      
+      let pets = [];
+      try {
+        const response = await hubFetch(`${HUB_API}/pets`);
+        if (response.data?.length > 0) {
+          pets = response.data;
+          renderRanking(pets);
+        } else {
+          pets = generateSimulatedPets();
+          renderRanking(pets);
+        }
+      } catch (error) {
+        pets = generateSimulatedPets();
+        renderRanking(pets);
+      }
+      
+      renderExploreGrid(pets);
+    };
+
+    // ══════════════════════════════════════════════
+    //  SOCIAL METRICS & WELCOME MESSAGE
+    // ══════════════════════════════════════════════
+    const socialMetrics = document.getElementById('social-metrics');
+    const welcomeMessageInput = document.getElementById('welcome-message-input');
+    const totalVisitsEl = document.getElementById('total-visits');
+    const totalGiftsEl = document.getElementById('total-gifts');
+    const totalGreetsEl = document.getElementById('total-greets');
+    const publicSinceEl = document.getElementById('public-since');
+
+    function updateSocialMetrics() {
+      if (!state || !state.isPublic) {
+        socialMetrics.style.display = 'none';
+        return;
+      }
+
+      socialMetrics.style.display = 'block';
+      
+      const visits = parseInt(localStorage.getItem(`regenmon_visits_${state.publicId}`) || '0');
+      const greets = parseInt(localStorage.getItem(`regenmon_greetings_${state.publicId}`) || '0');
+      const gifts = parseInt(localStorage.getItem(`regenmon_gifts_${state.publicId}`) || '0');
+      
+      totalVisitsEl.textContent = visits;
+      totalGreetsEl.textContent = greets;
+      totalGiftsEl.textContent = gifts;
+      publicSinceEl.textContent = state.publicSince || '-';
+      
+      // Set welcome message value
+      welcomeMessageInput.value = state.welcomeMessage || '';
+    }
+
+    welcomeMessageInput?.addEventListener('input', () => {
+      if (state && state.isPublic) {
+        state.welcomeMessage = welcomeMessageInput.value;
+        saveState();
+      }
+    });
+
+    // Update visitor profile to show welcome message
+    const originalShowVisitorProfile = showVisitorProfile;
+    showVisitorProfile = function(pet) {
+      originalShowVisitorProfile(pet);
+      
+      // Show welcome message if exists
+      if (pet.welcomeMessage) {
+        const existingWelcome = document.getElementById('visitor-welcome');
+        if (!existingWelcome) {
+          const welcomeDiv = document.createElement('div');
+          welcomeDiv.id = 'visitor-welcome';
+          welcomeDiv.style.cssText = 'font-size: 0.5rem; color: #92cc41; font-style: italic; margin-top: 4px;';
+          welcomeDiv.textContent = pet.welcomeMessage;
+          visitorName.parentNode.insertBefore(welcomeDiv, visitorName.nextSibling);
+        } else {
+          existingWelcome.textContent = pet.welcomeMessage;
+          existingWelcome.style.display = 'block';
+        }
+      }
+    };
+
+    // Update greeting to also notify
+    const originalGreetPet = greetPet;
+    greetPet = function() {
+      originalGreetPet();
+      
+      // Add notification for the pet owner (stored locally for now)
+      if (currentVisitorPet && currentVisitorPet.publicId) {
+        // In a real app, this would send to the HUB
+      }
+    };
+
+    // Update the public toggle to add notifications
+    const originalTogglePublic = togglePublic;
+    togglePublic = async function() {
+      if (!state) return;
+      
+      const wasPublic = state.isPublic;
+      await originalTogglePublic();
+      
+      if (!wasPublic && state.isPublic) {
+        state.publicSince = new Date().toLocaleDateString();
+        saveState();
+      }
+      
+      updateSocialMetrics();
+    };
+
+    // Update enterVisitorMode to show notifications and add notifications
+    const originalEnterVisitorMode = enterVisitorMode;
+    enterVisitorMode = function(pet) {
+      originalEnterVisitorMode(pet);
+      
+      // Show visit glow for pet owner when they visit
+      showVisitGlow();
+      
+      // Add notification for visit
+      if (pet.publicId) {
+        addNotification('visit', `👀 Alguien visitó a ${pet.name}`);
+      }
+    };
+
+    // Add gift notification function
+    function notifyGift(amount, senderName) {
+      addNotification('gift', `🎁 ${senderName} regaló ${amount} 🍊 a tu Regenmon`);
+    }
+
+    // Update renderPet to ensure public UI is correct
+    const originalRenderPet = renderPet;
+    renderPet = function() {
+      originalRenderPet();
+      updatePublicUI();
+      updateSocialMetrics();
+    };
+
     // Check visitor mode on load
     checkVisitorMode();
     updatePublicUI();
+    updateSocialMetrics();
+    updateNotificationBadge();
 
     // Initialize Hub UI
     updateHubUI();
