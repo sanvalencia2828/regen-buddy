@@ -429,8 +429,15 @@
       cursor: pointer;
     }
 
+    .training-result-box {
+      background: #1a2e1a;
+      border: 2px solid #92cc41;
+      padding: 12px;
+      border-radius: 4px;
+    }
+
     /* ════════════════════════════════════════
-       CHAT
+        CHAT
     ════════════════════════════════════════ */
     .chat-messages {
       display: flex;
@@ -876,9 +883,43 @@
     </div><!-- /.container -->
   </div><!-- /#app -->
 
+  <!-- ════════════════════════════════════════
+        TRAINING MODAL
+  ════════════════════════════════════════ -->
+  <div id="modal-training" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-box nes-container">
+      <p class="modal-title">🏋️ Entrenamiento</p>
+      <div class="modal-body">
+        <div id="training-form">
+          <input type="file" id="training-image-input" accept="image/*" style="display: none;" />
+          <button id="training-select-image" type="button" class="nes-btn is-primary" style="width: 100%; margin-bottom: 12px;">
+            📷 Seleccionar Imagen
+          </button>
+          <div id="training-preview-container" style="display: none; margin-bottom: 12px;">
+            <img id="training-image-preview" style="max-height: 150px; max-width: 100%; border-radius: 8px; border: 2px solid #444;" />
+          </div>
+          <div class="modal-actions">
+            <button id="training-evaluate" type="button" class="nes-btn is-primary" disabled>📤 Evaluar</button>
+            <button id="training-cancel" type="button" class="nes-btn">Cancelar</button>
+          </div>
+        </div>
+        <div id="training-result" style="display: none;">
+          <div class="training-result-box">
+            <div id="training-score" style="font-size: 1.2rem; color: #92cc41; margin-bottom: 8px;"></div>
+            <div id="training-category" style="display: inline-block; background: #209cee; padding: 4px 8px; border-radius: 4px; font-size: 0.5rem; margin-bottom: 8px;"></div>
+            <div id="training-message" style="font-size: 0.55rem; color: #9b9b9b; line-height: 1.6;"></div>
+          </div>
+          <div class="modal-actions" style="margin-top: 12px;">
+            <button id="training-close" type="button" class="nes-btn is-primary" style="width: 100%;">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ══════════════════
      MODAL CONFIRMACIÓN
-══════════════════ -->
+  ══════════════════ -->
   <div id="modal-reset" class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal-box nes-container">
       <p class="modal-title">⚠ Reiniciar</p>
@@ -952,6 +993,23 @@
     const modalPetName = document.getElementById('modal-pet-name');
     const modalCancel = document.getElementById('modal-cancel');
     const modalConfirm = document.getElementById('modal-confirm');
+
+    // DOM refs — training modal
+    const modalTraining = document.getElementById('modal-training');
+    const trainingForm = document.getElementById('training-form');
+    const trainingResult = document.getElementById('training-result');
+    const trainingImageInput = document.getElementById('training-image-input');
+    const trainingSelectImage = document.getElementById('training-select-image');
+    const trainingPreviewContainer = document.getElementById('training-preview-container');
+    const trainingImagePreview = document.getElementById('training-image-preview');
+    const trainingEvaluate = document.getElementById('training-evaluate');
+    const trainingCancel = document.getElementById('training-cancel');
+    const trainingClose = document.getElementById('training-close');
+    const trainingScore = document.getElementById('training-score');
+    const trainingCategory = document.getElementById('training-category');
+    const trainingMessage = document.getElementById('training-message');
+
+    let selectedTrainingImage = null;
 
     // DOM refs — collection button and history
     const collectCoinsSection = document.getElementById('collect-coins-section');
@@ -1428,7 +1486,10 @@
     });
     btnPlay.addEventListener('click', () => doAction({ happiness: 15, hunger: 10, energy: -10, msg: '🎮 ¡Qué divertido!', actionName: '🎮 Jugar', coins: 0 }));
     btnSleep.addEventListener('click', () => doAction({ energy: 20, hunger: 5, happiness: 5, msg: '💤 Ahhh… Energía recuperada.', actionName: '💤 Descansar', coins: 0 }));
-    btnTrain.addEventListener('click', () => doAction({ energy: -20, happiness: 10, hunger: 15, msg: '🏋️ ¡Gran entrenamiento!', actionName: '🏋️ Entrenar', coins: 0 }));
+    btnTrain.addEventListener('click', () => {
+      modalTraining.classList.add('open');
+      resetTrainingModal();
+    });
 
     // Reset modal
     btnReset.addEventListener('click', () => {
@@ -1460,6 +1521,116 @@
 
       showScreen('screen-create');
       showToast('Mascota eliminada. ¡Crea una nueva! 🥚');
+    });
+
+    // Training modal handlers
+    function resetTrainingModal() {
+      trainingForm.style.display = 'block';
+      trainingResult.style.display = 'none';
+      trainingImageInput.value = '';
+      selectedTrainingImage = null;
+      trainingPreviewContainer.style.display = 'none';
+      trainingEvaluate.disabled = true;
+      trainingEvaluate.classList.add('is-disabled');
+    }
+
+    trainingSelectImage.addEventListener('click', () => {
+      trainingImageInput.click();
+    });
+
+    trainingImageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          selectedTrainingImage = event.target.result;
+          trainingImagePreview.src = selectedTrainingImage;
+          trainingPreviewContainer.style.display = 'block';
+          trainingEvaluate.disabled = false;
+          trainingEvaluate.classList.remove('is-disabled');
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    trainingEvaluate.addEventListener('click', async () => {
+      if (!selectedTrainingImage) return;
+
+      showToast('⏳ Evaluando imagen...');
+      trainingEvaluate.disabled = true;
+
+      const base64Data = selectedTrainingImage.split(',')[1];
+
+      try {
+        const response = await fetch('/api/evaluate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64Data })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Error en la evaluación');
+        }
+
+        trainingScore.textContent = `⭐ Puntuación: ${data.score}`;
+        trainingCategory.textContent = data.category;
+        trainingMessage.textContent = data.message;
+
+        trainingForm.style.display = 'none';
+        trainingResult.style.display = 'block';
+
+        const originalHappiness = state.stats.happiness;
+        const originalEnergy = state.stats.energy;
+        const originalHunger = state.stats.hunger;
+
+        state.stats.happiness = clamp(state.stats.happiness + 10);
+        state.stats.energy = clamp(state.stats.energy - 15);
+        state.stats.hunger = clamp(state.stats.hunger + 10);
+
+        if (state.stats.happiness !== originalHappiness) {
+          showStatChangeAnimation('Felicidad', state.stats.happiness - originalHappiness, valHappiness);
+        }
+        if (state.stats.energy !== originalEnergy) {
+          showStatChangeAnimation('Energía', state.stats.energy - originalEnergy, valEnergy);
+        }
+        if (state.stats.hunger !== originalHunger) {
+          showStatChangeAnimation('Hambre', state.stats.hunger - originalHunger, valHunger);
+        }
+
+        saveState();
+        renderPet();
+        addActionHistory('🏋️ Entrenar', 0);
+
+        const trainingHistory = JSON.parse(localStorage.getItem('regenmon_training_history') || '[]');
+        trainingHistory.unshift({
+          score: data.score,
+          category: data.category,
+          message: data.message,
+          timestamp: Date.now()
+        });
+        if (trainingHistory.length > 20) trainingHistory.pop();
+        localStorage.setItem('regenmon_training_history', JSON.stringify(trainingHistory));
+
+        showSuccessMessage();
+
+      } catch (error) {
+        showErrorMessage(`Error: ${error.message}`);
+        trainingEvaluate.disabled = false;
+      }
+    });
+
+    trainingCancel.addEventListener('click', () => {
+      modalTraining.classList.remove('open');
+    });
+
+    trainingClose.addEventListener('click', () => {
+      modalTraining.classList.remove('open');
+    });
+
+    modalTraining.addEventListener('click', (e) => {
+      if (e.target === modalTraining) modalTraining.classList.remove('open');
     });
 
     // Auto-update age display every minute
