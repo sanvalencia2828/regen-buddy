@@ -281,6 +281,16 @@
       }
     }
 
+    @keyframes celebrate {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3) rotate(5deg); }
+      100% { transform: scale(1); }
+    }
+
+    .pet-emoji.celebrate {
+      animation: celebrate 1s ease;
+    }
+
     .pet-type-badge {
       font-size: clamp(0.34rem, 1.8vw, 0.44rem);
       color: #9b9b9b;
@@ -913,6 +923,7 @@
             <button id="training-evaluate" type="button" class="nes-btn is-primary" disabled>📤 Evaluar</button>
             <button id="training-cancel" type="button" class="nes-btn">Cancelar</button>
           </div>
+          <div id="training-status" style="font-size: 0.5rem; color: #9b9b9b; text-align: center; margin-top: 8px;"></div>
         </div>
         <div id="training-result" style="display: none;">
           <div class="training-result-box">
@@ -1062,6 +1073,7 @@
     const trainingScore = document.getElementById('training-score');
     const trainingCategory = document.getElementById('training-category');
     const trainingMessage = document.getElementById('training-message');
+    const trainingStatus = document.getElementById('training-status');
 
     let selectedTrainingImage = null;
 
@@ -1376,6 +1388,10 @@
           userCoins = loadedState.coins;
           updateCurrencyDisplay();
         }
+        // Backward compatibility: default trainingPoints to 0 if undefined
+        if (loadedState && loadedState.trainingPoints === undefined) {
+          loadedState.trainingPoints = 0;
+        }
         return loadedState;
       }
       catch { return null; }
@@ -1616,6 +1632,8 @@
       trainingPreviewContainer.style.display = 'none';
       trainingEvaluate.disabled = true;
       trainingEvaluate.classList.add('is-disabled');
+      trainingEvaluate.textContent = '📤 Evaluar';
+      trainingStatus.textContent = '';
     }
 
     trainingSelectImage.addEventListener('click', () => {
@@ -1632,6 +1650,8 @@
           trainingPreviewContainer.style.display = 'block';
           trainingEvaluate.disabled = false;
           trainingEvaluate.classList.remove('is-disabled');
+          showToast('📷 Imagen lista');
+          trainingStatus.textContent = 'Imagen seleccionada';
         };
         reader.readAsDataURL(file);
       }
@@ -1640,94 +1660,128 @@
     trainingEvaluate.addEventListener('click', async () => {
       if (!selectedTrainingImage) return;
 
-      showToast('⏳ Evaluando imagen...');
       trainingEvaluate.disabled = true;
-
+      trainingEvaluate.textContent = '⏳ Subiendo...';
+      trainingStatus.textContent = 'Subiendo imagen...';
+      
       const base64Data = selectedTrainingImage.split(',')[1];
 
-      try {
-        const response = await fetch('/api/evaluate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64Data })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Error en la evaluación');
-        }
-
-        trainingScore.textContent = `⭐ Puntuación: ${data.score}`;
-        trainingCategory.textContent = data.category;
-        trainingMessage.textContent = data.message;
-
-        trainingForm.style.display = 'none';
-        trainingResult.style.display = 'block';
-
-        // Calculate rewards
-        const coinsEarned = Math.floor(data.score / 10);
-        const previousStage = getEvolutionStage(state.type, state.trainingPoints || 0);
+      setTimeout(() => {
+        trainingEvaluate.textContent = '🤖 Evaluando con IA...';
+        trainingStatus.textContent = 'IA evaluando tu entrenamiento...';
         
-        // Add training points
-        if (!state.trainingPoints) state.trainingPoints = 0;
-        state.trainingPoints += data.score;
-        
-        // Check for evolution
-        const newStage = getEvolutionStage(state.type, state.trainingPoints);
-        const evolved = newStage.index > previousStage.index;
+        setTimeout(async () => {
+          try {
+            const response = await fetch('/api/evaluate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image: base64Data })
+            });
 
-        // Add coins
-        userCoins += coinsEarned;
-        showCoinAnimation(coinsEarned);
-        updateCurrencyDisplay();
-        if (typeof saveUserData === 'function') saveUserData();
+            const data = await response.json();
 
-        const originalHappiness = state.stats.happiness;
-        const originalEnergy = state.stats.energy;
-        const originalHunger = state.stats.hunger;
+            if (!response.ok) {
+              throw new Error(data.error || 'Error en la evaluación');
+            }
 
-        state.stats.happiness = clamp(state.stats.happiness + 10);
-        state.stats.energy = clamp(state.stats.energy - 15);
-        state.stats.hunger = clamp(state.stats.hunger + 10);
+            trainingEvaluate.textContent = '📤 Evaluar';
+            trainingEvaluate.disabled = false;
+            trainingStatus.textContent = '¡Evaluación completada!';
 
-        if (state.stats.happiness !== originalHappiness) {
-          showStatChangeAnimation('Felicidad', state.stats.happiness - originalHappiness, valHappiness);
-        }
-        if (state.stats.energy !== originalEnergy) {
-          showStatChangeAnimation('Energía', state.stats.energy - originalEnergy, valEnergy);
-        }
-        if (state.stats.hunger !== originalHunger) {
-          showStatChangeAnimation('Hambre', state.stats.hunger - originalHunger, valHunger);
-        }
+            // Animate score counting up
+            let currentScore = 0;
+            const targetScore = data.score;
+            const increment = Math.ceil(targetScore / 40);
+            const scoreInterval = setInterval(() => {
+              currentScore += increment;
+              if (currentScore >= targetScore) {
+                currentScore = targetScore;
+                clearInterval(scoreInterval);
+              }
+              trainingScore.textContent = `⭐ Puntuación: ${currentScore}`;
+            }, 25);
 
-        saveState();
-        renderPet();
-        addActionHistory('🏋️ Entrenar', coinsEarned);
+            trainingCategory.textContent = data.category;
+            trainingMessage.textContent = data.message;
 
-        // Show evolution toast if evolved
-        if (evolved) {
-          setTimeout(() => {
-            showToast(`🎉 ¡Tu Regenmon evolucionó a ${newStage.label}!`);
-          }, 1500);
-        }
+            trainingForm.style.display = 'none';
+            trainingResult.style.display = 'block';
 
-        const trainingHistory = JSON.parse(localStorage.getItem('regenmon_training_history') || '[]');
-        trainingHistory.unshift({
-          score: data.score,
-          category: data.category,
-          message: data.message,
-          timestamp: Date.now()
-        });
-        if (trainingHistory.length > 20) trainingHistory.pop();
-        localStorage.setItem('regenmon_training_history', JSON.stringify(trainingHistory));
+            // Calculate rewards
+            const coinsEarned = Math.floor(data.score / 10);
+            const previousStage = getEvolutionStage(state.type, state.trainingPoints || 0);
+            
+            // Add training points
+            if (!state.trainingPoints) state.trainingPoints = 0;
+            state.trainingPoints += data.score;
+            
+            // Check for evolution
+            const newStage = getEvolutionStage(state.type, state.trainingPoints);
+            const evolved = newStage.index > previousStage.index;
 
-        showSuccessMessage();
+            // Add coins after animation completes
+            setTimeout(() => {
+              userCoins += coinsEarned;
+              showCoinAnimation(coinsEarned);
+              updateCurrencyDisplay();
+              if (typeof saveUserData === 'function') saveUserData();
+            }, 1200);
 
-      } catch (error) {
-        showErrorMessage(`Error: ${error.message}`);
-        trainingEvaluate.disabled = false;
-      }
+            const originalHappiness = state.stats.happiness;
+            const originalEnergy = state.stats.energy;
+            const originalHunger = state.stats.hunger;
+
+            state.stats.happiness = clamp(state.stats.happiness + 10);
+            state.stats.energy = clamp(state.stats.energy - 15);
+            state.stats.hunger = clamp(state.stats.hunger + 10);
+
+            if (state.stats.happiness !== originalHappiness) {
+              showStatChangeAnimation('Felicidad', state.stats.happiness - originalHappiness, valHappiness);
+            }
+            if (state.stats.energy !== originalEnergy) {
+              showStatChangeAnimation('Energía', state.stats.energy - originalEnergy, valEnergy);
+            }
+            if (state.stats.hunger !== originalHunger) {
+              showStatChangeAnimation('Hambre', state.stats.hunger - originalHunger, valHunger);
+            }
+
+            saveState();
+            renderPet();
+            addActionHistory('🏋️ Entrenar', coinsEarned);
+
+            // Celebrate animation
+            displayEmoji.classList.add('celebrate');
+            setTimeout(() => {
+              displayEmoji.classList.remove('celebrate');
+            }, 1000);
+
+            // Show evolution toast if evolved
+            if (evolved) {
+              setTimeout(() => {
+                showToast(`🎉 ¡Tu Regenmon evolucionó a ${newStage.label}!`);
+              }, 1500);
+            }
+
+            const trainingHistory = JSON.parse(localStorage.getItem('regenmon_training_history') || '[]');
+            trainingHistory.unshift({
+              score: data.score,
+              category: data.category,
+              message: data.message,
+              timestamp: Date.now()
+            });
+            if (trainingHistory.length > 20) trainingHistory.pop();
+            localStorage.setItem('regenmon_training_history', JSON.stringify(trainingHistory));
+
+            showSuccessMessage();
+
+          } catch (error) {
+            showErrorMessage(`Error: ${error.message}`);
+            trainingEvaluate.textContent = '📤 Evaluar';
+            trainingEvaluate.disabled = false;
+            trainingStatus.textContent = 'Error en la evaluación';
+          }
+        }, 500);
+      }, 500);
     });
 
     trainingCancel.addEventListener('click', () => {
@@ -2097,7 +2151,7 @@
       document.getElementById('user-info').textContent = '👤 ' + (localStorage.getItem('user_email') || 'Usuario');
       updateCurrencyDisplay();
       updateFeedButton();
-      if (state) { showScreen('screen-pet'); } else { showScreen('screen-create'); }
+      if (state) { showScreen('screen-pet'); renderPet(); } else { showScreen('screen-create'); }
     }
 
     function updateUIAfterLogout() {
@@ -2106,6 +2160,7 @@
       document.getElementById('user-info').textContent = '¡Bienvenido!';
       document.getElementById('currency-display').textContent = '🍊 — $FRUTA';
       if (state) { showScreen('screen-pet'); } else { showScreen('screen-create'); }
+      if (state) { renderPet(); }
     }
 
     function updateCurrencyDisplay() {
@@ -2158,6 +2213,11 @@
     //  INIT — restore state + check login
     // ══════════════════════════════════════════════
     (function initApp() {
+      // Load pet state from localStorage
+      state = loadState();
+      if (state) {
+        renderPet();
+      }
       // Check login status
       if (localStorage.getItem('privy_logged_in') === 'true') {
         isLoggedIn = true;
