@@ -1008,6 +1008,53 @@
           </div>
         </div>
 
+        <!-- Social / Hub Section -->
+        <div class="nes-container with-title" id="hub-section">
+          <p class="title">🌐 HUB</p>
+          
+          <!-- Not registered view -->
+          <div id="hub-not-registered">
+            <p style="font-size: 0.5rem; color: #9b9b9b; margin-bottom: 12px;">
+              ¡Conecta tu Regenmon al HUB global para competir con otros!
+            </p>
+            <div id="hub-preview" style="display: none; background: #1a1a2e; padding: 12px; border-radius: 4px; margin-bottom: 12px;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <img id="hub-preview-sprite" style="width: 48px; height: 48px;" />
+                <div>
+                  <div id="hub-preview-name" style="font-size: 0.6rem; color: #fff;"></div>
+                  <div id="hub-preview-owner" style="font-size: 0.4rem; color: #9b9b9b;"></div>
+                </div>
+              </div>
+            </div>
+            <button id="btn-register-hub" type="button" class="nes-btn is-primary" style="width: 100%;">
+              🚀 Conectar al HUB
+            </button>
+          </div>
+
+          <!-- Registered view -->
+          <div id="hub-registered" style="display: none;">
+            <div class="nes-badge" style="margin-bottom: 12px; width: 100%;">
+              <span class="is-success">HUB MEMBER</span>
+              <span id="hub-member-name" style="margin-left: 8px; font-size: 0.5rem;"></span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <button id="btn-leaderboard" type="button" class="nes-btn is-warning">
+                🏆 Leaderboard
+              </button>
+              <button id="btn-my-profile" type="button" class="nes-btn is-primary">
+                👤 Mi Perfil
+              </button>
+            </div>
+            <div id="hub-balance" style="font-size: 0.5rem; color: #f97316; margin-top: 8px; text-align: center;">
+              Balance: <span id="hub-balance-value">0</span> $FRUTA
+            </div>
+            <div id="hub-activity-section" style="margin-top: 12px;">
+              <p style="font-size: 0.5rem; color: #9b9b9b; margin-bottom: 8px;">📡 Actividad Reciente</p>
+              <div id="hub-activity-list" style="max-height: 120px; overflow-y: auto; font-size: 0.4rem;"></div>
+            </div>
+          </div>
+        </div>
+
       </section>
     </div><!-- /.container -->
   </div><!-- /#app -->
@@ -1042,6 +1089,75 @@
           <div class="modal-actions" style="margin-top: 12px;">
             <button id="training-close" type="button" class="nes-btn is-primary" style="width: 100%;">Cerrar</button>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+        HUB LEADERBOARD MODAL
+  ════════════════════════════════════════ -->
+  <div id="modal-leaderboard" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-box nes-container" style="max-width: 450px; max-height: 80vh; overflow-y: auto;">
+      <p class="modal-title">🏆 Leaderboard</p>
+      <div id="leaderboard-content" style="font-size: 0.5rem;">
+        <div id="leaderboard-loading" style="text-align: center; color: #9b9b9b; padding: 20px;">
+          Cargando...
+        </div>
+      </div>
+      <div id="leaderboard-pagination" style="display: flex; justify-content: space-between; margin-top: 12px;">
+        <button id="lb-prev" type="button" class="nes-btn" disabled>← Anterior</button>
+        <button id="lb-next" type="button" class="nes-btn">Siguiente →</button>
+      </div>
+      <div class="modal-actions" style="margin-top: 12px;">
+        <button id="lb-close" type="button" class="nes-btn is-error" style="width: 100%;">← Volver</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+        HUB PROFILE MODAL
+  ════════════════════════════════════════ -->
+  <div id="modal-profile" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-box nes-container" style="max-width: 450px; max-height: 80vh; overflow-y: auto;">
+      <p class="modal-title" id="profile-title">👤 Perfil</p>
+      <div id="profile-content">
+        <div id="profile-loading" style="text-align: center; color: #9b9b9b; padding: 20px;">
+          Cargando...
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top: 12px;">
+        <button id="profile-close" type="button" class="nes-btn" style="width: 100%;">← Volver</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+        HUB REGISTRATION MODAL
+  ════════════════════════════════════════ -->
+  <div id="modal-hub-register" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-box nes-container">
+      <p class="modal-title">🚀 Conectar al HUB</p>
+      <div class="modal-body">
+        <p style="font-size: 0.5rem; color: #9b9b9b; margin-bottom: 12px;">
+          Preview de tu Regenmon:
+        </p>
+        <div id="hub-register-preview" style="background: #1a1a2e; padding: 16px; border-radius: 4px; margin-bottom: 12px; text-align: center;">
+          <img id="hub-register-sprite" style="width: 64px; height: 64px; margin-bottom: 8px;" />
+          <div id="hub-register-name" style="font-size: 0.7rem; color: #fff;"></div>
+          <div id="hub-register-owner" style="font-size: 0.5rem; color: #9b9b9b;"></div>
+          <div id="hub-register-stats" style="font-size: 0.4rem; color: #92cc41; margin-top: 8px;"></div>
+        </div>
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 0.5rem; color: #9b9b9b; display: block; margin-bottom: 4px;">
+            Email (opcional):
+          </label>
+          <input id="hub-register-email" type="email" class="nes-input" placeholder="tu@email.com" style="font-size: 0.5rem;" />
+        </div>
+        <div id="hub-register-status" style="font-size: 0.5rem; color: #9b9b9b; text-align: center; margin-bottom: 12px;"></div>
+        <div class="modal-actions">
+          <button id="hub-register-cancel" type="button" class="nes-btn">Cancelar</button>
+          <button id="hub-register-confirm" type="button" class="nes-btn is-primary">¡Registrar!</button>
         </div>
       </div>
     </div>
@@ -1906,6 +2022,9 @@
             renderTrainingGallery();
             updateAdvancedMetrics();
 
+            // Sync with Hub after training
+            syncWithHub();
+
             showSuccessMessage();
 
           } catch (error) {
@@ -2530,6 +2649,513 @@
       }
       updateFeedButton();
     })();
+
+    // ══════════════════════════════════════════════
+    //  HUB SYSTEM
+    // ══════════════════════════════════════════════
+    const HUB_API = 'https://regenmon-final.vercel.app/api';
+    const HUB_STORAGE_KEY = 'hubRegenmonId';
+    const HUB_REGISTERED_KEY = 'isRegisteredInHub';
+    const HUB_BALANCE_KEY = 'hubBalance';
+
+    // DOM refs - Hub
+    const hubNotRegistered = document.getElementById('hub-not-registered');
+    const hubRegistered = document.getElementById('hub-registered');
+    const hubPreview = document.getElementById('hub-preview');
+    const hubPreviewSprite = document.getElementById('hub-preview-sprite');
+    const hubPreviewName = document.getElementById('hub-preview-name');
+    const hubPreviewOwner = document.getElementById('hub-preview-owner');
+    const hubMemberName = document.getElementById('hub-member-name');
+    const hubBalanceValue = document.getElementById('hub-balance-value');
+    const hubActivityList = document.getElementById('hub-activity-list');
+    const btnRegisterHub = document.getElementById('btn-register-hub');
+    const btnLeaderboard = document.getElementById('btn-leaderboard');
+    const btnMyProfile = document.getElementById('btn-my-profile');
+
+    // Modal refs
+    const modalLeaderboard = document.getElementById('modal-leaderboard');
+    const modalProfile = document.getElementById('modal-profile');
+    const modalHubRegister = document.getElementById('modal-hub-register');
+    const leaderboardContent = document.getElementById('leaderboard-content');
+    const profileContent = document.getElementById('profile-content');
+    const lbPrev = document.getElementById('lb-prev');
+    const lbNext = document.getElementById('lb-next');
+    const lbClose = document.getElementById('lb-close');
+    const profileClose = document.getElementById('profile-close');
+    const hubRegisterCancel = document.getElementById('hub-register-cancel');
+    const hubRegisterConfirm = document.getElementById('hub-register-confirm');
+    const hubRegisterEmail = document.getElementById('hub-register-email');
+    const hubRegisterStatus = document.getElementById('hub-register-status');
+
+    let leaderboardPage = 1;
+
+    // Helper: get sprite URL from emoji
+    function getSpriteUrl(emoji) {
+      const codePoints = [...emoji].map(c => c.codePointAt(0).toString(16)).join('-');
+      return `https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/${codePoints}.png`;
+    }
+
+    // Helper: format relative time
+    function formatRelativeTime(timestamp) {
+      const diff = Date.now() - timestamp;
+      const mins = Math.floor(diff / 60000);
+      const hours = Math.floor(diff / 3600000);
+      const days = Math.floor(diff / 86400000);
+      if (mins < 1) return 'ahora';
+      if (mins < 60) return `hace ${mins} min`;
+      if (hours < 24) return `hace ${hours} h`;
+      return `hace ${days} d`;
+    }
+
+    // Helper: fetch with retry
+    async function hubFetch(url, options = {}, retries = 1) {
+      try {
+        const response = await fetch(url, options);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.json();
+      } catch (error) {
+        if (retries > 0) {
+          await new Promise(r => setTimeout(r, 2000));
+          return hubFetch(url, options, retries - 1);
+        }
+        throw error;
+      }
+    }
+
+    // Check if registered in Hub
+    function isHubRegistered() {
+      const hubId = localStorage.getItem(HUB_STORAGE_KEY);
+      const isRegistered = localStorage.getItem(HUB_REGISTERED_KEY) === 'true';
+      return { hubId, isRegistered: !!hubId && isRegistered };
+    }
+
+    // Update Hub UI based on registration status
+    function updateHubUI() {
+      const { hubId, isRegistered } = isHubRegistered();
+      
+      if (isRegistered && hubId) {
+        hubNotRegistered.style.display = 'none';
+        hubRegistered.style.display = 'block';
+        hubMemberName.textContent = state?.name || 'Regenmon';
+        
+        // Load balance
+        const balance = parseInt(localStorage.getItem(HUB_BALANCE_KEY) || '0');
+        hubBalanceValue.textContent = balance;
+        
+        // Load activity
+        loadHubActivity(hubId);
+      } else {
+        hubNotRegistered.style.display = 'block';
+        hubRegistered.style.display = 'none';
+        
+        // Show preview if pet exists
+        if (state) {
+          const evolution = getEvolutionStage(state.type, state.trainingPoints || 0);
+          hubPreview.style.display = 'block';
+          hubPreviewSprite.src = getSpriteUrl(evolution.emoji);
+          hubPreviewName.textContent = state.name;
+          hubPreviewOwner.textContent = localStorage.getItem('user_email') || 'Dueño';
+        } else {
+          hubPreview.style.display = 'none';
+        }
+      }
+    }
+
+    // Register in Hub
+    async function registerInHub(email) {
+      if (!state) {
+        showToast('¡Crea tu Regenmon primero!');
+        return;
+      }
+
+      const ownerName = localStorage.getItem('user_email') || 'Dueño';
+      const appUrl = window.location.origin;
+      const evolution = getEvolutionStage(state.type, state.trainingPoints || 0);
+      
+      const payload = {
+        name: state.name,
+        ownerName: ownerName,
+        ownerEmail: email || undefined,
+        appUrl: appUrl,
+        sprite: getSpriteUrl(evolution.emoji)
+      };
+
+      hubRegisterStatus.textContent = 'Registrando...';
+      hubRegisterConfirm.disabled = true;
+
+      try {
+        const response = await hubFetch(`${HUB_API}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.success) {
+          const regenmonId = response.data.id;
+          localStorage.setItem(HUB_STORAGE_KEY, regenmonId);
+          localStorage.setItem(HUB_REGISTERED_KEY, 'true');
+          if (response.data.balance !== undefined) {
+            localStorage.setItem(HUB_BALANCE_KEY, response.data.balance.toString());
+          }
+          
+          modalHubRegister.classList.remove('open');
+          updateHubUI();
+          showToast('¡Conectado al HUB! 🎉');
+          
+          // Initial sync
+          syncWithHub();
+        } else {
+          hubRegisterStatus.textContent = 'Error: ' + (response.error || 'Registro fallido');
+        }
+      } catch (error) {
+        hubRegisterStatus.textContent = 'El HUB está descansando, intenta después 🍎';
+      } finally {
+        hubRegisterConfirm.disabled = false;
+      }
+    }
+
+    // Sync with Hub
+    async function syncWithHub() {
+      const { hubId, isRegistered } = isHubRegistered();
+      if (!isRegistered || !hubId) return;
+
+      const payload = {
+        regenmonId: hubId,
+        stats: state?.stats || { happiness: 50, energy: 50, hunger: 50 },
+        totalPoints: state?.trainingPoints || 0,
+        trainingHistory: []
+      };
+
+      try {
+        const response = await hubFetch(`${HUB_API}/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.data?.balance !== undefined) {
+          localStorage.setItem(HUB_BALANCE_KEY, response.data.balance.toString());
+          hubBalanceValue.textContent = response.data.balance;
+        }
+      } catch (error) {
+        console.error('Hub sync failed:', error);
+      }
+    }
+
+    // Load Hub activity
+    async function loadHubActivity(hubId) {
+      try {
+        const response = await hubFetch(`${HUB_API}/regenmon/${hubId}/activity?limit=10`);
+        
+        if (response.data?.activity?.length > 0) {
+          let html = '';
+          response.data.activity.forEach(item => {
+            let icon = '📝';
+            if (item.type === 'feed_received') icon = '🍎';
+            if (item.type === 'gift_received') icon = '🎁';
+            if (item.type === 'message_received') icon = '📨';
+            html += `<div style="padding: 4px 0; border-bottom: 1px solid #333;">${icon} ${item.description}</div>`;
+          });
+          hubActivityList.innerHTML = html;
+        } else {
+          hubActivityList.innerHTML = '<div style="color: #9b9b9b;">Aún no hay actividad. ¡Comparte tu perfil!</div>';
+        }
+      } catch (error) {
+        hubActivityList.innerHTML = '<div style="color: #9b9b9b;">No se pudo cargar actividad</div>';
+      }
+    }
+
+    // Load Leaderboard
+    async function loadLeaderboard(page = 1) {
+      leaderboardPage = page;
+      leaderboardContent.innerHTML = '<div style="text-align: center; color: #9b9b9b; padding: 20px;">Cargando...</div>';
+      
+      try {
+        const response = await hubFetch(`${HUB_API}/leaderboard?page=${page}&limit=10`);
+        
+        if (response.data?.length > 0) {
+          let html = '';
+          response.data.forEach((item, idx) => {
+            const rank = (page - 1) * 10 + idx + 1;
+            let rankDisplay = `#${rank}`;
+            if (rank === 1) rankDisplay = '🥇';
+            else if (rank === 2) rankDisplay = '🥈';
+            else if (rank === 3) rankDisplay = '🥉';
+            
+            html += `
+              <div class="leaderboard-item" style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #1a1a2e; border-radius: 4px; margin-bottom: 8px;">
+                <div style="width: 30px; text-align: center; font-size: 0.7rem;">${rankDisplay}</div>
+                <img src="${item.sprite}" style="width: 32px; height: 32px;" />
+                <div style="flex: 1;">
+                  <div style="font-size: 0.5rem; color: #fff;">${item.name}</div>
+                  <div style="font-size: 0.35rem; color: #9b9b9b;">${item.ownerName}</div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 0.45rem; color: #92cc41;">${item.totalPoints} pts</div>
+                  <div style="font-size: 0.35rem; color: #f97316;">${item.balance} 🍊</div>
+                </div>
+                <button class="nes-btn is-small" data-id="${item.id}" style="padding: 4px 8px; font-size: 0.4rem;">Ver</button>
+              </div>
+            `;
+          });
+          leaderboardContent.innerHTML = html;
+          
+          // Attach click handlers
+          document.querySelectorAll('.leaderboard-item button').forEach(btn => {
+            btn.addEventListener('click', () => {
+              modalLeaderboard.classList.remove('open');
+              openProfileModal(btn.dataset.id);
+            });
+          });
+          
+          lbPrev.disabled = page <= 1;
+          lbNext.disabled = page >= response.pagination?.totalPages;
+        } else {
+          leaderboardContent.innerHTML = '<div style="text-align: center; color: #9b9b9b;">No hay datos</div>';
+        }
+      } catch (error) {
+        leaderboardContent.innerHTML = '<div style="text-align: center; color: #e76e55;">El HUB está descansando 🍎</div>';
+      }
+    }
+
+    // Open Profile Modal
+    async function openProfileModal(profileId) {
+      const { hubId: myHubId } = isHubRegistered();
+      const isMyProfile = myHubId === profileId;
+      
+      document.getElementById('profile-title').textContent = isMyProfile ? '👤 Mi Perfil' : '👤 Perfil';
+      profileContent.innerHTML = '<div style="text-align: center; color: #9b9b9b; padding: 20px;">Cargando...</div>';
+      modalProfile.classList.add('open');
+
+      try {
+        const response = await hubFetch(`${HUB_API}/regenmon/${profileId}`);
+        
+        if (response.data) {
+          const p = response.data;
+          const isMy = myHubId === p.id;
+          
+          let html = `
+            <div style="text-align: center; padding: 16px; background: #1a1a2e; border-radius: 4px; margin-bottom: 12px;">
+              <img src="${p.sprite}" style="width: 80px; height: 80px; margin-bottom: 8px;" />
+              <div style="font-size: 0.7rem; color: #fff;">${p.name}</div>
+              <div style="font-size: 0.5rem; color: #9b9b9b;">Dueño: ${p.ownerName}</div>
+              <div class="nes-badge" style="margin-top: 8px;">
+                <span class="is-primary">${p.stage || 'Bebé'}</span>
+              </div>
+            </div>
+            <div style="margin-bottom: 12px;">
+              <div style="font-size: 0.45rem; margin-bottom: 4px;">😊 Felicidad: ${p.stats?.happiness || 50}</div>
+              <progress class="nes-progress is-success" value="${p.stats?.happiness || 50}" max="100" style="width: 100%;"></progress>
+            </div>
+            <div style="margin-bottom: 12px;">
+              <div style="font-size: 0.45rem; margin-bottom: 4px;">⚡ Energía: ${p.stats?.energy || 50}</div>
+              <progress class="nes-progress is-warning" value="${p.stats?.energy || 50}" max="100" style="width: 100%;"></progress>
+            </div>
+            <div style="margin-bottom: 12px;">
+              <div style="font-size: 0.45rem; margin-bottom: 4px;">🍖 Hambre: ${p.stats?.hunger || 50}</div>
+              <progress class="nes-progress is-error" value="${p.stats?.hunger || 50}" max="100" style="width: 100%;"></progress>
+            </div>
+            <div style="display: flex; justify-content: space-around; font-size: 0.5rem; margin-bottom: 12px;">
+              <div>⭐ ${p.totalPoints || 0} pts</div>
+              <div style="color: #f97316;">🍊 ${p.balance || 0}</div>
+              <div>👁️ ${p.totalVisits || 0} visitas</div>
+            </div>
+            <div style="font-size: 0.4rem; color: #9b9b9b; text-align: center; margin-bottom: 12px;">
+              Registrado: ${new Date(p.registeredAt).toLocaleDateString()}
+            </div>
+          `;
+          
+          // Add social actions if not my profile and I'm registered
+          if (!isMy && myHubId) {
+            const myBalance = parseInt(localStorage.getItem(HUB_BALANCE_KEY) || '0');
+            
+            html += `
+              <div style="border-top: 1px solid #333; padding-top: 12px; margin-top: 12px;">
+                <div style="font-size: 0.5rem; color: #9b9b9b; margin-bottom: 8px;">Interacciones:</div>
+                
+                <button id="profile-feed" type="button" class="nes-btn is-success" style="width: 100%; margin-bottom: 8px;" ${myBalance < 10 ? 'disabled' : ''}>
+                  🍎 Dar de comer (-10 🍊)
+                </button>
+                
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                  <button class="nes-btn gift-btn" data-amount="5" style="flex: 1;" ${myBalance < 5 ? 'disabled' : ''}>🎁 5</button>
+                  <button class="nes-btn gift-btn" data-amount="10" style="flex: 1;" ${myBalance < 10 ? 'disabled' : ''}>🎁 10</button>
+                  <button class="nes-btn gift-btn" data-amount="25" style="flex: 1;" ${myBalance < 25 ? 'disabled' : ''}>🎁 25</button>
+                </div>
+                
+                <div style="margin-bottom: 8px;">
+                  <textarea id="profile-message" class="nes-input" placeholder="Escribe un mensaje... (140 chars)" maxlength="140" style="width: 100%; height: 60px; font-size: 0.5rem;"></textarea>
+                  <div style="font-size: 0.35rem; color: #9b9b9b; text-align: right;"><span id="msg-char-count">0</span>/140</div>
+                </div>
+                <button id="profile-send-msg" type="button" class="nes-btn is-primary" style="width: 100%;">📨 Enviar Mensaje</button>
+              </div>
+            `;
+          } else if (!isMy && !myHubId) {
+            html += `
+              <div style="border-top: 1px solid #333; padding-top: 12px; margin-top: 12px; text-align: center;">
+                <div style="font-size: 0.5rem; color: #9b9b9b;">Regístrate en el HUB para interactuar</div>
+              </div>
+            `;
+          }
+          
+          profileContent.innerHTML = html;
+          
+          // Attach event handlers
+          if (!isMy && myHubId) {
+            const msgTextarea = document.getElementById('profile-message');
+            const msgCharCount = document.getElementById('msg-char-count');
+            if (msgTextarea && msgCharCount) {
+              msgTextarea.addEventListener('input', () => {
+                msgCharCount.textContent = msgTextarea.value.length;
+              });
+            }
+            
+            document.getElementById('profile-feed')?.addEventListener('click', () => feedRegenmon(p.id, p.name));
+            
+            document.querySelectorAll('.gift-btn').forEach(btn => {
+              btn.addEventListener('click', () => sendGift(p.id, p.name, parseInt(btn.dataset.amount)));
+            });
+            
+            document.getElementById('profile-send-msg')?.addEventListener('click', () => sendMessage(p.id));
+          }
+        } else {
+          profileContent.innerHTML = '<div style="text-align: center; color: #e76e55;">No se encontró el perfil</div>';
+        }
+      } catch (error) {
+        profileContent.innerHTML = '<div style="text-align: center; color: #e76e55;">El HUB está descansando 🍎</div>';
+      }
+    }
+
+    // Social actions
+    async function feedRegenmon(targetId, targetName) {
+      const { hubId: myHubId } = isHubRegistered();
+      if (!myHubId) return;
+      
+      try {
+        const response = await hubFetch(`${HUB_API}/regenmon/${targetId}/feed`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fromRegenmonId: myHubId })
+        });
+        
+        if (response.data) {
+          localStorage.setItem(HUB_BALANCE_KEY, response.data.senderBalance.toString());
+          hubBalanceValue.textContent = response.data.senderBalance;
+          showToast(`¡Le diste de comer a ${targetName}! -10 🍊`);
+          openProfileModal(targetId); // Refresh
+        }
+      } catch (error) {
+        showToast('El HUB está descansando 🍎');
+      }
+    }
+
+    async function sendGift(targetId, targetName, amount) {
+      const { hubId: myHubId } = isHubRegistered();
+      if (!myHubId) return;
+      
+      try {
+        const response = await hubFetch(`${HUB_API}/regenmon/${targetId}/gift`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fromRegenmonId: myHubId, amount })
+        });
+        
+        if (response.data) {
+          localStorage.setItem(HUB_BALANCE_KEY, response.data.senderBalance.toString());
+          hubBalanceValue.textContent = response.data.senderBalance;
+          showToast(`¡Enviaste ${amount} 🍊 a ${targetName}! 🎁`);
+          openProfileModal(targetId); // Refresh
+        }
+      } catch (error) {
+        showToast('El HUB está descansando 🍎');
+      }
+    }
+
+    async function sendMessage(targetId) {
+      const { hubId: myHubId } = isHubRegistered();
+      const msgInput = document.getElementById('profile-message');
+      const message = msgInput?.value.trim();
+      
+      if (!message || !myHubId) return;
+      
+      const ownerName = localStorage.getItem('user_email') || 'Dueño';
+      
+      try {
+        const response = await hubFetch(`${HUB_API}/regenmon/${targetId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fromRegenmonId: myHubId,
+            fromName: ownerName,
+            message: message
+          })
+        });
+        
+        if (response.success) {
+          showToast('¡Mensaje enviado! 📨');
+          msgInput.value = '';
+          openProfileModal(targetId); // Refresh
+        }
+      } catch (error) {
+        showToast('El HUB está descansando 🍎');
+      }
+    }
+
+    // Event listeners
+    btnRegisterHub?.addEventListener('click', () => {
+      if (!state) {
+        showToast('¡Crea tu Regenmon primero!');
+        return;
+      }
+      
+      const evolution = getEvolutionStage(state.type, state.trainingPoints || 0);
+      document.getElementById('hub-register-sprite').src = getSpriteUrl(evolution.emoji);
+      document.getElementById('hub-register-name').textContent = state.name;
+      document.getElementById('hub-register-owner').textContent = localStorage.getItem('user_email') || 'Dueño';
+      document.getElementById('hub-register-stats').textContent = `⭐ ${state.trainingPoints || 0} pts`;
+      hubRegisterStatus.textContent = '';
+      hubRegisterEmail.value = '';
+      modalHubRegister.classList.add('open');
+    });
+
+    btnLeaderboard?.addEventListener('click', () => {
+      loadLeaderboard(1);
+      modalLeaderboard.classList.add('open');
+    });
+
+    btnMyProfile?.addEventListener('click', () => {
+      const { hubId } = isHubRegistered();
+      if (hubId) openProfileModal(hubId);
+    });
+
+    lbPrev?.addEventListener('click', () => {
+      if (leaderboardPage > 1) loadLeaderboard(leaderboardPage - 1);
+    });
+
+    lbNext?.addEventListener('click', () => {
+      loadLeaderboard(leaderboardPage + 1);
+    });
+
+    lbClose?.addEventListener('click', () => modalLeaderboard.classList.remove('open'));
+    profileClose?.addEventListener('click', () => modalProfile.classList.remove('open'));
+    modalLeaderboard?.addEventListener('click', e => { if (e.target === modalLeaderboard) modalLeaderboard.classList.remove('open'); });
+    modalProfile?.addEventListener('click', e => { if (e.target === modalProfile) modalProfile.classList.remove('open'); });
+
+    hubRegisterCancel?.addEventListener('click', () => modalHubRegister.classList.remove('open'));
+    modalHubRegister?.addEventListener('click', e => { if (e.target === modalHubRegister) modalHubRegister.classList.remove('open'); });
+    
+    hubRegisterConfirm?.addEventListener('click', () => {
+      registerInHub(hubRegisterEmail.value);
+    });
+
+    // Auto-sync every 5 minutes
+    setInterval(() => {
+      const { isRegistered } = isHubRegistered();
+      if (isRegistered) syncWithHub();
+    }, 5 * 60 * 1000);
+
+    // Initialize Hub UI
+    updateHubUI();
 
     // Initialize chat system + action history
     loadChatHistory();
