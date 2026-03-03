@@ -3188,7 +3188,7 @@
               btn.addEventListener('click', () => sendGift(p.id, p.name, parseInt(btn.dataset.amount)));
             });
             
-            document.getElementById('profile-send-msg')?.addEventListener('click', () => sendMessage(p.id));
+            document.getElementById('profile-send-msg')?.addEventListener('click', () => sendSocialMessage(p.id));
           }
         } else {
           profileContent.innerHTML = '<div style="text-align: center; color: #e76e55;">No se encontró el perfil</div>';
@@ -3243,7 +3243,7 @@
       }
     }
 
-    async function sendMessage(targetId) {
+    async function sendSocialMessage(targetId) {
       const { hubId: myHubId } = isHubRegistered();
       const msgInput = document.getElementById('profile-message');
       const message = msgInput?.value.trim();
