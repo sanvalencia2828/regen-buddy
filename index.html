@@ -902,6 +902,9 @@
        REGENMON — Lógica
     ══════════════════════════════════════════════ */
     const STORAGE_KEY = 'regenmon_state';
+    let userCoins = 100;
+    let isLoggedIn = false;
+    let currentUser = null;
 
     const TYPE_META = {
       seed: { emoji: '🌱', label: 'Semilla · Tierra', cls: 'type-seed' },
@@ -1782,9 +1785,6 @@
     // ══════════════════════════════════════════════
     //  AUTH SYSTEM — Email login (simple, reliable)
     // ══════════════════════════════════════════════
-    let isLoggedIn = false;
-    let currentUser = null;
-
     function loginWithPrivy() {
       const email = prompt('Ingresa tu correo electrónico:');
       if (email && email.includes('@')) {
