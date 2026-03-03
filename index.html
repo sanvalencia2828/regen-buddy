@@ -1420,7 +1420,7 @@
         showToast('¿No tienes suficientes 🍊 para alimentar!');
         return;
       }
-      if (typeof userCoins !== 'undefined') { userCoins -= 10; updateCurrencyDisplay(); saveUserData(); }
+      if (typeof userCoins !== 'undefined') { userCoins -= 10; updateCurrencyDisplay(); saveUserData(); updateFeedButton(); }
       doAction({ hunger: -15, happiness: 5, energy: 5, msg: '🍖 ¡Ñam ñam! Hambre reducida.', actionName: '🍎 Alimentar', coins: -10 });
     });
     btnPlay.addEventListener('click', () => doAction({ happiness: 15, hunger: 10, energy: -10, msg: '🎮 ¡Qué divertido!', actionName: '🎮 Jugar', coins: 0 }));
@@ -1743,6 +1743,7 @@
           showCoinAnimation(coinGain);
           updateCurrencyDisplay();
           saveUserData();
+          updateFeedButton();
         }
       }
 
@@ -1778,12 +1779,115 @@
       }
     });
 
-    // Faucet + collect-coins click handlers
+    // ══════════════════════════════════════════════
+    //  AUTH SYSTEM — Email login (simple, reliable)
+    // ══════════════════════════════════════════════
+    let isLoggedIn = false;
+    let currentUser = null;
+
+    function loginWithPrivy() {
+      const email = prompt('Ingresa tu correo electrónico:');
+      if (email && email.includes('@')) {
+        isLoggedIn = true;
+        localStorage.setItem('privy_logged_in', 'true');
+        localStorage.setItem('user_email', email);
+        loadUserData();
+        updateUIAfterLogin();
+        showToast('✅ ¡Sesión iniciada!');
+      } else if (email) {
+        showToast('❌ Correo inválido');
+      }
+    }
+
+    function logoutUser() {
+      isLoggedIn = false;
+      currentUser = null;
+      localStorage.removeItem('privy_logged_in');
+      localStorage.removeItem('user_email');
+      userCoins = 100;
+      updateCurrencyDisplay();
+      updateUIAfterLogout();
+      updateFeedButton();
+      showToast('Sesión cerrada');
+    }
+
+    function updateUIAfterLogin() {
+      loginBtn.style.display = 'none';
+      logoutBtn.style.display = 'inline-block';
+      document.getElementById('user-info').textContent = '👤 ' + (localStorage.getItem('user_email') || 'Usuario');
+      updateCurrencyDisplay();
+      updateFeedButton();
+      if (state) { showScreen('screen-pet'); } else { showScreen('screen-create'); }
+    }
+
+    function updateUIAfterLogout() {
+      loginBtn.style.display = 'inline-block';
+      logoutBtn.style.display = 'none';
+      document.getElementById('user-info').textContent = '¡Bienvenido!';
+      document.getElementById('currency-display').textContent = '🍊 — $FRUTA';
+      if (state) { showScreen('screen-pet'); } else { showScreen('screen-create'); }
+    }
+
+    function updateCurrencyDisplay() {
+      document.getElementById('currency-display').textContent = '🍊 ' + userCoins + ' $FRUTA';
+    }
+
+    function saveUserData() {
+      if (isLoggedIn) {
+        localStorage.setItem('user_coins', userCoins.toString());
+      }
+    }
+
+    function loadUserData() {
+      const savedCoins = localStorage.getItem('user_coins');
+      if (savedCoins) { userCoins = parseInt(savedCoins); }
+    }
+
+    // ══════════════════════════════════════════════
+    //  FEED BUTTON — disable when not enough coins
+    // ══════════════════════════════════════════════
+    function updateFeedButton() {
+      if (userCoins < 10) {
+        btnFeed.classList.add('is-disabled');
+        btnFeed.disabled = true;
+        btnFeed.innerHTML = '<span class="action-icon">🍎</span><span>Sin monedas</span>';
+      } else {
+        btnFeed.classList.remove('is-disabled');
+        btnFeed.disabled = false;
+        btnFeed.innerHTML = '<span class="action-icon">🍎</span><span>Alimentar (10 🍊)</span>';
+      }
+    }
+    // Alias for existing calls
+    function updateFeedButtonState() { updateFeedButton(); }
+
+    // ══════════════════════════════════════════════
+    //  EVENT LISTENERS — Auth + Faucet + History
+    // ══════════════════════════════════════════════
+    loginBtn.addEventListener('click', () => loginWithPrivy());
+    logoutBtn.addEventListener('click', () => logoutUser());
+    const loginButton = document.getElementById('login-button');
+    if (loginButton) loginButton.addEventListener('click', () => loginWithPrivy());
+
     faucetBtn.addEventListener('click', faucetClaim);
     if (collectCoinsBtn) collectCoinsBtn.addEventListener('click', collectCoins);
 
     // Clear action history
     if (btnClearHistory) btnClearHistory.addEventListener('click', clearActionHistory);
+
+    // ══════════════════════════════════════════════
+    //  INIT — restore state + check login
+    // ══════════════════════════════════════════════
+    (function initApp() {
+      // Check login status
+      if (localStorage.getItem('privy_logged_in') === 'true') {
+        isLoggedIn = true;
+        loadUserData();
+        updateUIAfterLogin();
+      } else {
+        updateUIAfterLogout();
+      }
+      updateFeedButton();
+    })();
 
     // Initialize chat system + action history
     loadChatHistory();
